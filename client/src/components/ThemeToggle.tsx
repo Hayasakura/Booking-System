@@ -7,8 +7,8 @@ export default function ThemeToggle() {
     <button
       className="btn btn-ghost btn-sm"
       onClick={() => setTheme(toggleTheme())}
-      title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-      aria-label="Toggle color theme"
+      title={theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
+      aria-label="切换颜色主题"
     >
       {theme === 'dark' ? '☀️' : '🌙'}
     </button>

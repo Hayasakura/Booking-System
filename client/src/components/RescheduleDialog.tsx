@@ -24,7 +24,7 @@ export default function RescheduleDialog({ booking, email, useCustomerApi, onDon
   useEffect(() => {
     api.get<Provider>(`/api/providers/${booking.provider_id}`)
       .then(setProvider)
-      .catch(() => setError('Could not load availability'));
+      .catch(() => setError('无法加载空档信息'));
   }, [booking.provider_id]);
 
   async function confirm() {
@@ -38,11 +38,11 @@ export default function RescheduleDialog({ booking, email, useCustomerApi, onDon
       onDone(updated);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        setError(err.message + ' The slot list has been refreshed.');
+        setError(err.message + ' 空档列表已刷新。');
         setSlot(null);
         setRefreshKey((k) => k + 1);
       } else {
-        setError(err instanceof Error ? err.message : 'Reschedule failed');
+        setError(err instanceof Error ? err.message : '改期失败');
       }
     } finally {
       setBusy(false);
@@ -52,8 +52,8 @@ export default function RescheduleDialog({ booking, email, useCustomerApi, onDon
   return (
     <div className="reschedule-box">
       <div className="panel-head">
-        <h2>Pick a new time</h2>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}>✕ Close</button>
+        <h2>选择新的时间</h2>
+        <button className="btn btn-ghost btn-sm" onClick={onClose}>✕ 关闭</button>
       </div>
       <p className="muted small">
         Currently: {fmtDateTime(booking.starts_at)} – {fmtTime(booking.ends_at)}
@@ -68,11 +68,11 @@ export default function RescheduleDialog({ booking, email, useCustomerApi, onDon
           refreshKey={refreshKey}
         />
       ) : (
-        <p className="muted">Loading…</p>
+        <p className="muted">正在加载…</p>
       )}
       {error && <p className="error-box">{error}</p>}
       <button className="btn btn-primary" disabled={!slot || busy} onClick={confirm}>
-        {busy ? 'Rescheduling…' : slot ? `Move to ${fmtDateTime(slot.start)}` : 'Select a new slot'}
+        {busy ? '改期中…' : slot ? `改到 ${fmtDateTime(slot.start)}` : '请选择新的时间'}
       </button>
     </div>
   );

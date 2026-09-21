@@ -25,7 +25,7 @@ export default function Manage() {
       ));
     } catch (err) {
       setBooking(null);
-      setError(err instanceof ApiError ? err.message : 'Lookup failed');
+      setError(err instanceof ApiError ? err.message : '查询失败');
     } finally {
       setBusy(false);
     }
@@ -38,7 +38,7 @@ export default function Manage() {
 
   async function cancel() {
     if (!booking) return;
-    let msg = 'Cancel this booking? The slot will be released.';
+    let msg = '确定取消此预约吗？该时间段将被释放。';
     try {
       const p = await api.get<{ paid: boolean; refund: { amountCents: number; paidCents: number } | null }>(
         `/api/bookings/${booking.code}/refund-preview?email=${encodeURIComponent(email.trim())}`
@@ -46,8 +46,8 @@ export default function Manage() {
       if (p.paid && p.refund) {
         msg =
           p.refund.amountCents > 0
-            ? `Cancel this booking? ${money(p.refund.amountCents)} of the ${money(p.refund.paidCents)} you paid will be refunded.`
-            : 'Cancel this booking? Per the cancellation policy, no refund applies this close to the appointment.';
+            ? `确定取消此预约吗？你已支付的 ${money(p.refund.paidCents)} 中将退还 ${money(p.refund.amountCents)}。`
+            : '确定取消此预约吗？根据取消政策，临近预约时间取消不予退款。';
       }
     } catch {
       /* preview is best-effort */
@@ -58,7 +58,7 @@ export default function Manage() {
     try {
       setBooking(await api.post<Booking>(`/api/bookings/${booking.code}/cancel`, { email }));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Cancellation failed');
+      setError(err instanceof ApiError ? err.message : '取消预约失败');
     } finally {
       setBusy(false);
     }
@@ -72,15 +72,15 @@ export default function Manage() {
 
   return (
     <div className="container narrow-page">
-      <h1>Manage your booking</h1>
-      <p className="muted">Enter the booking code from your confirmation email.</p>
+      <h1>管理你的预约</h1>
+      <p className="muted">请输入确认邮件中的预约码。</p>
 
       <form onSubmit={lookup} className="lookup-form">
-        <input className="input" placeholder="Booking code (e.g. BK-7F3K2A)" required
+        <input className="input" placeholder="预约码（例如 BK-7F3K2A）" required
           value={code} onChange={(e) => setCode(e.target.value)} />
-        <input className="input" type="email" placeholder="Email used for booking" required
+        <input className="input" type="email" placeholder="预约时使用的邮箱" required
           value={email} onChange={(e) => setEmail(e.target.value)} />
-        <button className="btn btn-primary" disabled={busy}>{busy ? 'Looking up…' : 'Find booking'}</button>
+        <button className="btn btn-primary" disabled={busy}>{busy ? '查询中…' : '查询预约'}</button>
       </form>
 
       {error && <p className="error-box">{error}</p>}
@@ -96,66 +96,66 @@ export default function Manage() {
             <span className={`badge badge-${booking.status}`}>{STATUS_LABELS[booking.status]}</span>
           </div>
           <div className="confirm-details">
-            <div><span>Code</span><strong>{booking.code}</strong></div>
-            <div><span>When</span><strong>{fmtDateTime(booking.starts_at)} – {fmtTime(booking.ends_at)}</strong></div>
-            <div><span>Booked by</span><strong>{booking.customer_name}</strong></div>
-            <div><span>Price</span><strong>{money(booking.price_cents)}</strong></div>
+            <div><span>预约码</span><strong>{booking.code}</strong></div>
+            <div><span>时间</span><strong>{fmtDateTime(booking.starts_at)} – {fmtTime(booking.ends_at)}</strong></div>
+            <div><span>预约人</span><strong>{booking.customer_name}</strong></div>
+            <div><span>价格</span><strong>{money(booking.price_cents)}</strong></div>
             {(booking.discount_cents ?? 0) > 0 && (
-              <div><span>Discount</span><strong>− {money(booking.discount_cents!)}</strong></div>
+              <div><span>优惠</span><strong>− {money(booking.discount_cents!)}</strong></div>
             )}
             {booking.refund && booking.refund.amountCents > 0 && (
-              <div><span>Refund</span><strong>{money(booking.refund.amountCents)} initiated</strong></div>
+              <div><span>退款</span><strong>已发起 {money(booking.refund.amountCents)}</strong></div>
             )}
-            {booking.notes && <div><span>Notes</span><strong>{booking.notes}</strong></div>}
+            {booking.notes && <div><span>备注</span><strong>{booking.notes}</strong></div>}
           </div>
           {booking.status === 'pending_payment' && booking.expires_at && new Date(booking.expires_at) > new Date() && (
             <Link
               className="btn btn-primary"
               to={`/checkout/${booking.code}?email=${encodeURIComponent(email.trim())}`}
             >
-              💳 Complete payment
+              💳 完成支付
             </Link>
           )}
           {(booking.amount_due_cents ?? 0) > 0 && booking.status !== 'pending_payment' && (
             <Link className="panel-link" to={`/receipt/${booking.code}?email=${encodeURIComponent(email.trim())}`}>
-              🧾 View receipt
+              🧾 查看收据
             </Link>
           )}
           {upcoming && (
             <div className="btn-row">
               {canReschedule && (
                 <button className="btn btn-ghost" onClick={() => setRescheduling((r) => !r)} disabled={busy}>
-                  🔁 Reschedule
+                  🔁 改期
                 </button>
               )}
               <button className="btn btn-danger" onClick={cancel} disabled={busy}>
-                {busy ? 'Cancelling…' : 'Cancel booking'}
+                {busy ? '取消中…' : '取消预约'}
               </button>
             </div>
           )}
           {booking.series_code && upcoming && (
             <div className="series-cancel-row">
               <span className="muted small">
-                Part of series <strong className="mono">{booking.series_code}</strong>
+                系列预约 <strong className="mono">{booking.series_code}</strong>
               </span>
               <button
                 className="btn btn-danger-ghost btn-sm"
                 disabled={busy}
                 onClick={async () => {
-                  if (!window.confirm('Cancel ALL remaining sessions in this series?')) return;
+                  if (!window.confirm('确定取消此系列中所有剩余预约吗？')) return;
                   setBusy(true);
                   setError('');
                   try {
                     await api.post(`/api/bookings/series/${booking.series_code}/cancel`, { email });
                     void lookup();
                   } catch (err) {
-                    setError(err instanceof ApiError ? err.message : 'Series cancellation failed');
+                    setError(err instanceof ApiError ? err.message : '取消系列预约失败');
                   } finally {
                     setBusy(false);
                   }
                 }}
               >
-                Cancel remaining series
+                取消剩余系列预约
               </button>
             </div>
           )}

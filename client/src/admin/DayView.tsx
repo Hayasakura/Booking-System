@@ -48,7 +48,7 @@ export default function DayView() {
   return (
     <div>
       <div className="dayview-head">
-        <h1 className="admin-title">Day view</h1>
+        <h1 className="admin-title">日视图</h1>
         <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </div>
 
@@ -90,7 +90,7 @@ export default function DayView() {
             </div>
           ))}
         </div>
-        {bookings.length === 0 && <p className="muted center pad">No bookings on this day.</p>}
+        {bookings.length === 0 && <p className="muted center pad">当天没有预约。</p>}
       </div>
     </div>
   );

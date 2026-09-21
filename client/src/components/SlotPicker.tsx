@@ -46,10 +46,10 @@ export default function SlotPicker({
   }, [provider]);
 
   const grouped = useMemo(() => {
-    const g: Record<string, Slot[]> = { Morning: [], Afternoon: [], Evening: [] };
+    const g: Record<string, Slot[]> = { 上午: [], 下午: [], 晚上: [] };
     for (const s of slots) {
       const h = new Date(s.start).getHours();
-      (h < 12 ? g.Morning : h < 17 ? g.Afternoon : g.Evening).push(s);
+      (h < 12 ? g.上午 : h < 17 ? g.下午 : g.晚上).push(s);
     }
     return g;
   }, [slots]);
@@ -65,15 +65,15 @@ export default function SlotPicker({
           >
             <span className="date-pill-day">{WEEKDAYS_SHORT[d.date.getDay()]}</span>
             <span className="date-pill-num">{d.date.getDate()}</span>
-            <span className="date-pill-month">{d.date.toLocaleString('en', { month: 'short' })}</span>
+            <span className="date-pill-month">{d.date.toLocaleString('zh-CN', { month: 'short' })}</span>
           </button>
         ))}
       </div>
 
-      {loading && <p className="muted">Checking availability…</p>}
+      {loading && <p className="muted">正在查询空档…</p>}
       {!loading && slots.length === 0 && (
         <>
-          <p className="muted empty-slots">No slots available on this day — try another date.</p>
+          <p className="muted empty-slots">当天没有可预约的时间，请尝试其他日期。</p>
           {renderEmpty?.(date)}
         </>
       )}

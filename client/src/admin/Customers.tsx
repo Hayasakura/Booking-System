@@ -34,26 +34,26 @@ export default function Customers() {
 
   return (
     <>
-      <h1 className="admin-title">Customers</h1>
+      <h1 className="admin-title">客户</h1>
       <div className="filter-bar">
-        <input className="input" placeholder="Search name / email / phone…"
+        <input className="input" placeholder="搜索姓名 / 邮箱 / 手机…"
           value={search} onChange={(e) => setSearch(e.target.value)} />
         <select className="input" value={sort} onChange={(e) => setSort(e.target.value)}>
-          <option value="recent">Most recent visit</option>
-          <option value="spend">Highest spend</option>
-          <option value="bookings">Most bookings</option>
-          <option value="name">Name A–Z</option>
+          <option value="recent">最近到访</option>
+          <option value="spend">消费最高</option>
+          <option value="bookings">预约最多</option>
+          <option value="name">姓名 A–Z</option>
         </select>
       </div>
 
       <div className="panel">
-        {customers.length === 0 && <p className="muted">No customers found.</p>}
+        {customers.length === 0 && <p className="muted">未找到客户。</p>}
         {customers.length > 0 && (
           <table className="table">
             <thead>
               <tr>
-                <th>Customer</th><th>Bookings</th><th>Spend</th><th>Points</th>
-                <th>Last visit</th><th>No-shows</th><th>Upcoming</th>
+                <th>客户</th><th>预约数</th><th>消费</th><th>积分</th>
+                <th>最近到访</th><th>爽约次数</th><th>即将到来</th>
               </tr>
             </thead>
             <tbody>
@@ -61,7 +61,7 @@ export default function Customers() {
                 <tr key={c.id}>
                   <td>
                     <Link to={`/admin/customers/${c.id}`}>
-                      <strong>{c.name}</strong> {c.has_account && <span title="Has an account">👤</span>}
+                      <strong>{c.name}</strong> {c.has_account && <span title="已有账户">👤</span>}
                     </Link>
                     <div className="muted small">{c.email}{c.phone ? ` · ${c.phone}` : ''}</div>
                   </td>

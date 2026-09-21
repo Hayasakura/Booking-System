@@ -7,9 +7,9 @@ import { RatingBadge } from '../components/Stars';
 import { useFavorites } from '../customer/favorites';
 
 const TYPE_LABELS: Record<string, string> = {
-  doctor: 'Doctors & Clinics',
-  salon: 'Salons & Grooming',
-  turf: 'Turfs & Courts',
+  doctor: '医生与诊所',
+  salon: '沙龙与护理',
+  turf: '运动场地',
 };
 
 export default function Providers() {
@@ -35,17 +35,17 @@ export default function Providers() {
   return (
     <div className="container">
       <div className="page-head">
-        <h1>{TYPE_LABELS[type ?? ''] ?? 'Providers'}</h1>
+        <h1>{TYPE_LABELS[type ?? ''] ?? '服务商'}</h1>
         <input
           className="input search-input"
-          placeholder="Search by name or specialty…"
+          placeholder="按名称或专业搜索…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
 
-      {loading && <p className="muted">Loading providers…</p>}
-      {!loading && filtered.length === 0 && <p className="muted">No providers found.</p>}
+      {loading && <p className="muted">正在加载服务商…</p>}
+      {!loading && filtered.length === 0 && <p className="muted">未找到服务商。</p>}
 
       <div className="provider-grid">
         {filtered.map((p) => (
@@ -53,7 +53,7 @@ export default function Providers() {
             {fav.loggedIn && (
               <button
                 className={`fav-btn ${fav.ids.has(p.id) ? 'on' : ''}`}
-                title={fav.ids.has(p.id) ? 'Remove from favorites' : 'Add to favorites'}
+                title={fav.ids.has(p.id) ? '取消收藏' : '加入收藏'}
                 onClick={(e) => {
                   e.preventDefault();
                   fav.toggle(p.id);
@@ -74,11 +74,11 @@ export default function Providers() {
                   </span>
                 ))}
                 {(p.services?.length ?? 0) > 3 && (
-                  <span className="chip chip-more">+{p.services!.length - 3} more</span>
+                  <span className="chip chip-more">+{p.services!.length - 3} 项</span>
                 )}
               </div>
             </div>
-            <span className="provider-cta">Book →</span>
+            <span className="provider-cta">预约 →</span>
           </Link>
         ))}
       </div>

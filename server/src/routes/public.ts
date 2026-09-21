@@ -31,9 +31,9 @@ publicRouter.post('/auth/login', asyncHandler(async (req, res) => {
 
 // ---------------------------------------------------------------- catalog
 export const BUSINESS_TYPES = [
-  { key: 'doctor', label: 'Doctors & Clinics', emoji: '🩺', tagline: 'Consultations, follow-ups and procedures' },
-  { key: 'salon', label: 'Salons & Grooming', emoji: '💇', tagline: 'Cuts, color, styling and self-care' },
-  { key: 'turf', label: 'Turfs & Courts', emoji: '⚽', tagline: 'Football turfs, badminton courts and more' },
+  { key: 'doctor', label: '医生与诊所', emoji: '🩺', tagline: '问诊、复诊与医疗服务' },
+  { key: 'salon', label: '沙龙与护理', emoji: '💇', tagline: '剪发、染发、造型与个人护理' },
+  { key: 'turf', label: '运动场地', emoji: '⚽', tagline: '足球场、羽毛球场等运动场地' },
 ] as const;
 
 publicRouter.get('/business-types', (_req, res) => res.json(BUSINESS_TYPES));

@@ -30,6 +30,9 @@ const PAYMENT_BADGES: Record<string, string> = {
   refunded: 'badge-completed',
   failed: 'badge-cancelled',
 };
+const PAYMENT_LABELS: Record<string, string> = {
+  created: '已创建', captured: '已收款', partially_refunded: '部分退款', refunded: '已退款', failed: '失败',
+};
 
 export default function Payments() {
   const [payments, setPayments] = useState<AdminPayment[]>([]);
@@ -53,23 +56,23 @@ export default function Payments() {
   async function refund(p: AdminPayment) {
     const refundable = p.amount_cents - p.refunded_cents;
     const input = window.prompt(
-      `Refund how much? (max ₹${(refundable / 100).toLocaleString('en-IN')})`,
+      `退款金额是多少？（最多 ₹${(refundable / 100).toLocaleString('en-IN')}）`,
       String(refundable / 100)
     );
     if (input === null) return;
     const amount = Math.round(parseFloat(input) * 100);
     if (!amount || amount <= 0 || amount > refundable) {
-      setFlash('Invalid refund amount');
+      setFlash('退款金额无效');
       return;
     }
     setBusyId(p.id);
     setFlash('');
     try {
       await api.post(`/api/admin/payments/${p.id}/refund`, { amountCents: amount });
-      setFlash(`Refunded ${money(amount)} on ${p.booking_code}`);
+      setFlash(`已为 ${p.booking_code} 退款 ${money(amount)}`);
       load();
     } catch (err) {
-      setFlash(err instanceof ApiError ? err.message : 'Refund failed');
+      setFlash(err instanceof ApiError ? err.message : '退款失败');
     } finally {
       setBusyId(null);
     }
@@ -78,31 +81,31 @@ export default function Payments() {
   return (
     <>
       <div className="admin-title-row">
-        <h1 className="admin-title">Payments</h1>
+        <h1 className="admin-title">支付</h1>
         {flash && <span className="flash flash-ok">{flash}</span>}
       </div>
 
       <div className="filter-bar">
         <select className="input" value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="">All statuses</option>
-          <option value="created">Created</option>
-          <option value="captured">Captured</option>
-          <option value="partially_refunded">Partially refunded</option>
-          <option value="refunded">Refunded</option>
-          <option value="failed">Failed</option>
+          <option value="">全部状态</option>
+          <option value="created">已创建</option>
+          <option value="captured">已收款</option>
+          <option value="partially_refunded">部分退款</option>
+          <option value="refunded">已退款</option>
+          <option value="failed">失败</option>
         </select>
-        <input className="input" placeholder="Search code / customer / order…"
+        <input className="input" placeholder="搜索预约码 / 客户 / 订单…"
           value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <div className="panel">
-        {payments.length === 0 && <p className="muted">No payments found.</p>}
+        {payments.length === 0 && <p className="muted">未找到支付记录。</p>}
         {payments.length > 0 && (
           <table className="table">
             <thead>
               <tr>
-                <th>Booking</th><th>Customer</th><th>Provider</th><th>Amount</th>
-                <th>Status</th><th>Method</th><th>Created</th><th></th>
+                <th>预约</th><th>客户</th><th>服务商</th><th>金额</th>
+                <th>状态</th><th>方式</th><th>创建时间</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -119,16 +122,16 @@ export default function Payments() {
                     <td>
                       {money(p.amount_cents)}
                       {p.refunded_cents > 0 && (
-                        <div className="muted small">− {money(p.refunded_cents)} refunded</div>
+                        <div className="muted small">− {money(p.refunded_cents)} 已退款</div>
                       )}
                     </td>
-                    <td><span className={`badge ${PAYMENT_BADGES[p.status] ?? ''}`}>{p.status.replace(/_/g, ' ')}</span></td>
+                    <td><span className={`badge ${PAYMENT_BADGES[p.status] ?? ''}`}>{PAYMENT_LABELS[p.status] ?? p.status}</span></td>
                     <td className="small">{p.method || p.provider}<div className="muted small mono">{p.order_id}</div></td>
                     <td className="small">{fmtDateTime(p.created_at)}</td>
                     <td className="row-actions">
                       {['captured', 'partially_refunded'].includes(p.status) && refundable > 0 && (
                         <button className="btn btn-danger-ghost btn-xs" disabled={busyId === p.id} onClick={() => refund(p)}>
-                          Refund
+                          退款
                         </button>
                       )}
                     </td>

@@ -22,7 +22,7 @@ export default function Account() {
   const load = useCallback(() => {
     api.get<Booking[]>('/api/customer/bookings')
       .then(setBookings)
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load bookings'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : '加载预约失败'));
     api.get<Provider[]>('/api/customer/favorites').then(setFavorites).catch(() => {});
   }, []);
 
@@ -41,14 +41,14 @@ export default function Account() {
   const past = (bookings ?? []).filter((b) => !(b.status === 'confirmed' && new Date(b.starts_at) > now));
 
   async function cancel(b: Booking) {
-    if (!window.confirm('Cancel this booking? The slot will be released.')) return;
+    if (!window.confirm('确定取消此预约吗？该时间段将被释放。')) return;
     setBusyId(b.id);
     setError('');
     try {
       await api.post(`/api/bookings/${b.code}/cancel`, { email: user!.email });
       load();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Cancellation failed');
+      setError(err instanceof ApiError ? err.message : '取消预约失败');
     } finally {
       setBusyId(null);
     }
@@ -63,20 +63,20 @@ export default function Account() {
     <div className="container">
       <div className="account-head">
         <div>
-          <h1>Hi, {user.name.split(' ')[0]} 👋</h1>
+          <h1>你好，{user.name.split(' ')[0]} 👋</h1>
           <p className="muted">{user.email}</p>
         </div>
-        <button className="btn btn-ghost" onClick={signOut}>Sign out</button>
+        <button className="btn btn-ghost" onClick={signOut}>退出登录</button>
       </div>
 
       {error && <p className="error-box">{error}</p>}
 
       <section className="step-card">
-        <h2>Upcoming appointments</h2>
-        {bookings === null && <p className="muted">Loading…</p>}
+        <h2>即将到来的预约</h2>
+        {bookings === null && <p className="muted">正在加载…</p>}
         {bookings !== null && upcoming.length === 0 && (
           <p className="muted">
-            Nothing booked yet — <Link to="/">find a provider</Link> to get started.
+            还没有预约——<Link to="/">查找服务商</Link>开始预约吧。
           </p>
         )}
         <div className="booking-list">
@@ -91,8 +91,8 @@ export default function Account() {
                 <span className={`badge badge-${b.status}`}>{STATUS_LABELS[b.status]}</span>
               </div>
               <div className="confirm-details">
-                <div><span>Code</span><strong className="mono">{b.code}</strong></div>
-                <div><span>When</span><strong>{fmtDateTime(b.starts_at)} – {fmtTime(b.ends_at)}</strong></div>
+                <div><span>预约码</span><strong className="mono">{b.code}</strong></div>
+                <div><span>时间</span><strong>{fmtDateTime(b.starts_at)} – {fmtTime(b.ends_at)}</strong></div>
               </div>
               <div className="btn-row">
                 {new Date() <
@@ -102,11 +102,11 @@ export default function Account() {
                     disabled={busyId === b.id}
                     onClick={() => setReschedulingId(reschedulingId === b.id ? null : b.id)}
                   >
-                    🔁 Reschedule
+                    🔁 改期
                   </button>
                 )}
                 <button className="btn btn-danger-ghost btn-sm" disabled={busyId === b.id} onClick={() => cancel(b)}>
-                  {busyId === b.id ? 'Cancelling…' : 'Cancel'}
+                  {busyId === b.id ? '取消中…' : '取消预约'}
                 </button>
               </div>
               {reschedulingId === b.id && (
@@ -144,8 +144,8 @@ export default function Account() {
       )}
 
       <section className="step-card">
-        <h2>Booking history</h2>
-        {bookings !== null && past.length === 0 && <p className="muted">No past bookings yet.</p>}
+        <h2>预约记录</h2>
+        {bookings !== null && past.length === 0 && <p className="muted">暂无历史预约。</p>}
         <div className="booking-list">
           {past.map((b) => (
             <div key={b.id} className="history-block">
@@ -160,7 +160,7 @@ export default function Account() {
                     className="btn btn-ghost btn-xs"
                     onClick={() => setReviewingId(reviewingId === b.id ? null : b.id)}
                   >
-                    ⭐ Review
+                    ⭐ 评价
                   </button>
                 )}
                 <span className={`badge badge-${b.status}`}>{STATUS_LABELS[b.status]}</span>

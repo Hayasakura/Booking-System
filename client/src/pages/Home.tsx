@@ -14,12 +14,12 @@ export default function Home() {
     <div className="container">
       <section className="hero">
         <h1>
-          Book anything.<br />
-          <span className="hero-accent">Doctors, salons &amp; turfs.</span>
+          预约你需要的一切。<br />
+          <span className="hero-accent">医生、沙龙与运动场地。</span>
         </h1>
         <p className="hero-sub">
-          Real-time availability, zero double-bookings, instant email confirmations.
-          Pick a category to get started.
+          实时查看空闲时间，杜绝重复预约，邮件即时确认。
+          选择一个类别开始预约。
         </p>
       </section>
 
@@ -29,7 +29,7 @@ export default function Home() {
             <span className="category-emoji">{t.emoji}</span>
             <h2>{t.label}</h2>
             <p>{t.tagline}</p>
-            <span className="category-cta">Browse →</span>
+            <span className="category-cta">浏览 →</span>
           </Link>
         ))}
       </section>
@@ -38,22 +38,22 @@ export default function Home() {
         <div className="feature">
           <span>⚡</span>
           <div>
-            <h3>Live slot availability</h3>
-            <p>Slots are computed from real schedules, breaks and existing bookings.</p>
+            <h3>实时空档</h3>
+            <p>空档根据真实营业时间、休息时间和现有预约动态计算。</p>
           </div>
         </div>
         <div className="feature">
           <span>🔒</span>
           <div>
-            <h3>Conflict-proof</h3>
-            <p>Database-level exclusion constraints make double-booking impossible.</p>
+            <h3>杜绝时间冲突</h3>
+            <p>数据库级排他约束让重复预约不可能发生。</p>
           </div>
         </div>
         <div className="feature">
           <span>📧</span>
           <div>
-            <h3>Email confirmations</h3>
-            <p>Instant confirmation and cancellation emails with a manage link.</p>
+            <h3>邮件确认</h3>
+            <p>即时发送确认和取消邮件，并附带预约管理链接。</p>
           </div>
         </div>
       </section>

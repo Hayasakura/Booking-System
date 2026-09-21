@@ -34,22 +34,22 @@ export default function ProviderEdit() {
     }
   }
 
-  if (!provider) return <p className="muted">Loading…</p>;
+  if (!provider) return <p className="muted">正在加载…</p>;
 
   return (
     <div>
       <div className="admin-title-row">
         <h1 className="admin-title">
-          <Link to="/admin/providers" className="muted">Providers /</Link> {provider.name}
+          <Link to="/admin/providers" className="muted">服务商 /</Link> {provider.name}
         </h1>
         {flash && <span className={`flash flash-${flash.kind}`}>{flash.msg}</span>}
       </div>
 
       <DetailsPanel provider={provider} onSave={(p) =>
-        run(async () => { await api.put(`/api/admin/providers/${id}`, p); await load(); }, 'Provider saved')} />
+        run(async () => { await api.put(`/api/admin/providers/${id}`, p); await load(); }, '服务商信息已保存')} />
 
       <ServicesPanel provider={provider} onChanged={() =>
-        run(load, 'Services updated')} onError={(m) => show('err', m)} />
+        run(load, '服务已更新')} onError={(m) => show('err', m)} />
 
       <SchedulePanel
         schedules={schedules} breaks={breaks}
@@ -60,10 +60,10 @@ export default function ProviderEdit() {
             breaks: breaks.map(({ weekday, start_time, end_time, label }) => ({ weekday, start_time: hhmm(start_time), end_time: hhmm(end_time), label })),
           });
           await load();
-        }, 'Schedule saved')}
+        }, '营业时间已保存')}
       />
 
-      <TimeOffPanel provider={provider} onChanged={() => run(load, 'Time off updated')} />
+      <TimeOffPanel provider={provider} onChanged={() => run(load, '休息时间已更新')} />
     </div>
   );
 }
@@ -75,24 +75,24 @@ function DetailsPanel({ provider, onSave }: { provider: Provider; onSave: (p: Pa
 
   return (
     <section className="panel">
-      <h2>Details</h2>
+      <h2>基本信息</h2>
       <div className="form-grid">
-        <label>Name<input className="input" value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} /></label>
-        <label>Title / specialty<input className="input" value={p.title} onChange={(e) => setP({ ...p, title: e.target.value })} /></label>
-        <label>Type
+        <label>名称<input className="input" value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} /></label>
+        <label>头衔 / 专业<input className="input" value={p.title} onChange={(e) => setP({ ...p, title: e.target.value })} /></label>
+        <label>类型
           <select className="input" value={p.business_type} onChange={(e) => setP({ ...p, business_type: e.target.value as Provider['business_type'] })}>
-            <option value="doctor">Doctor</option><option value="salon">Salon</option><option value="turf">Turf</option>
+            <option value="doctor">医生</option><option value="salon">沙龙</option><option value="turf">运动场地</option>
           </select>
         </label>
-        <label>Emoji<input className="input" value={p.emoji} onChange={(e) => setP({ ...p, emoji: e.target.value })} /></label>
-        <label>Color<input className="input" type="color" value={p.color} onChange={(e) => setP({ ...p, color: e.target.value })} /></label>
-        <label>Slot step (min)<input className="input" type="number" min={5} max={120} value={p.slot_step_min} onChange={(e) => setP({ ...p, slot_step_min: +e.target.value })} /></label>
-        <label>Min lead time (min)<input className="input" type="number" min={0} value={p.min_lead_min} onChange={(e) => setP({ ...p, min_lead_min: +e.target.value })} /></label>
-        <label>Booking horizon (days)<input className="input" type="number" min={1} max={365} value={p.booking_horizon_days} onChange={(e) => setP({ ...p, booking_horizon_days: +e.target.value })} /></label>
-        <label>Reschedule cutoff (min)<input className="input" type="number" min={0} value={p.reschedule_cutoff_min ?? 120} onChange={(e) => setP({ ...p, reschedule_cutoff_min: +e.target.value })} /></label>
-        <label className="span2">Bio<textarea className="input" rows={2} value={p.bio} onChange={(e) => setP({ ...p, bio: e.target.value })} /></label>
+        <label>表情<input className="input" value={p.emoji} onChange={(e) => setP({ ...p, emoji: e.target.value })} /></label>
+        <label>颜色<input className="input" type="color" value={p.color} onChange={(e) => setP({ ...p, color: e.target.value })} /></label>
+        <label>时间间隔（分钟）<input className="input" type="number" min={5} max={120} value={p.slot_step_min} onChange={(e) => setP({ ...p, slot_step_min: +e.target.value })} /></label>
+        <label>最短提前时间（分钟）<input className="input" type="number" min={0} value={p.min_lead_min} onChange={(e) => setP({ ...p, min_lead_min: +e.target.value })} /></label>
+        <label>可预约范围（天）<input className="input" type="number" min={1} max={365} value={p.booking_horizon_days} onChange={(e) => setP({ ...p, booking_horizon_days: +e.target.value })} /></label>
+        <label>改期截止时间（分钟）<input className="input" type="number" min={0} value={p.reschedule_cutoff_min ?? 120} onChange={(e) => setP({ ...p, reschedule_cutoff_min: +e.target.value })} /></label>
+        <label className="span2">简介<textarea className="input" rows={2} value={p.bio} onChange={(e) => setP({ ...p, bio: e.target.value })} /></label>
         <label className="check-label">
-          <input type="checkbox" checked={p.active} onChange={(e) => setP({ ...p, active: e.target.checked })} /> Active (visible & bookable)
+          <input type="checkbox" checked={p.active} onChange={(e) => setP({ ...p, active: e.target.checked })} /> 启用（可见且可预约）
         </label>
       </div>
       <button className="btn btn-primary" onClick={() => onSave({
@@ -100,7 +100,7 @@ function DetailsPanel({ provider, onSave }: { provider: Provider; onSave: (p: Pa
         color: p.color, slot_step_min: p.slot_step_min, min_lead_min: p.min_lead_min,
         booking_horizon_days: p.booking_horizon_days, reschedule_cutoff_min: p.reschedule_cutoff_min ?? 120,
         active: p.active,
-      })}>Save details</button>
+      })}>保存信息</button>
     </section>
   );
 }
@@ -136,11 +136,11 @@ function ServicesPanel({ provider, onChanged, onError }: {
   return (
     <section className="panel">
       <div className="panel-head">
-        <h2>Services</h2>
-        <button className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...(empty as Service), id: 0, isNew: true })}>+ Add service</button>
+        <h2>服务</h2>
+        <button className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...(empty as Service), id: 0, isNew: true })}>+ 添加服务</button>
       </div>
       <table className="table">
-        <thead><tr><th>Service</th><th>Duration</th><th>Buffer</th><th>Price</th><th>Payment</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>服务</th><th>时长</th><th>缓冲</th><th>价格</th><th>付款方式</th><th>状态</th><th></th></tr></thead>
         <tbody>
           {(provider.services ?? []).map((s) => (
             <tr key={s.id}>
@@ -148,14 +148,14 @@ function ServicesPanel({ provider, onChanged, onError }: {
                 <div>{s.name}</div>
                 <div className="muted small">{s.description}</div>
               </td>
-              <td>{s.duration_min} min</td>
-              <td>{s.buffer_min} min</td>
+              <td>{s.duration_min} 分钟</td>
+              <td>{s.buffer_min} 分钟</td>
               <td>{money(s.price_cents)}</td>
               <td className="small">
-                {s.payment_policy === 'full' ? 'Prepaid' : s.payment_policy === 'deposit' ? `${s.deposit_pct}% deposit` : 'At venue'}
+                {s.payment_policy === 'full' ? '全额预付' : s.payment_policy === 'deposit' ? `${s.deposit_pct}% 定金` : '到店支付'}
               </td>
-              <td><span className={`badge ${s.active ? 'badge-confirmed' : 'badge-cancelled'}`}>{s.active ? 'Active' : 'Hidden'}</span></td>
-              <td><button className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...s })}>Edit</button></td>
+              <td><span className={`badge ${s.active ? 'badge-confirmed' : 'badge-cancelled'}`}>{s.active ? '启用' : '隐藏'}</span></td>
+              <td><button className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...s })}>编辑</button></td>
             </tr>
           ))}
         </tbody>
@@ -163,37 +163,37 @@ function ServicesPanel({ provider, onChanged, onError }: {
 
       {editing && (
         <div className="service-editor">
-          <h3>{editing.isNew ? 'New service' : `Edit: ${editing.name}`}</h3>
+          <h3>{editing.isNew ? '新建服务' : `编辑：${editing.name}`}</h3>
           <div className="form-grid">
-            <label>Name<input className="input" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></label>
-            <label>Description<input className="input" value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></label>
-            <label>Duration (min)<input className="input" type="number" min={5} max={480} value={editing.duration_min} onChange={(e) => setEditing({ ...editing, duration_min: +e.target.value })} /></label>
-            <label>Buffer (min)<input className="input" type="number" min={0} max={120} value={editing.buffer_min} onChange={(e) => setEditing({ ...editing, buffer_min: +e.target.value })} /></label>
-            <label>Price (₹)
+            <label>名称<input className="input" value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></label>
+            <label>描述<input className="input" value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></label>
+            <label>时长（分钟）<input className="input" type="number" min={5} max={480} value={editing.duration_min} onChange={(e) => setEditing({ ...editing, duration_min: +e.target.value })} /></label>
+            <label>缓冲（分钟）<input className="input" type="number" min={0} max={120} value={editing.buffer_min} onChange={(e) => setEditing({ ...editing, buffer_min: +e.target.value })} /></label>
+            <label>价格（₹）
               <input className="input" type="number" min={0} value={editing.price_cents / 100}
                 onChange={(e) => setEditing({ ...editing, price_cents: Math.round(+e.target.value * 100) })} />
             </label>
-            <label>Payment
+            <label>付款方式
               <select className="input" value={editing.payment_policy ?? 'none'}
                 onChange={(e) => setEditing({ ...editing, payment_policy: e.target.value as Service['payment_policy'] })}>
-                <option value="none">Pay at venue</option>
-                <option value="deposit">Deposit online</option>
-                <option value="full">Full prepayment</option>
+                <option value="none">到店支付</option>
+                <option value="deposit">线上支付定金</option>
+                <option value="full">全额预付</option>
               </select>
             </label>
             {editing.payment_policy === 'deposit' && (
-              <label>Deposit %
+              <label>定金比例
                 <input className="input" type="number" min={1} max={100} value={editing.deposit_pct ?? 50}
                   onChange={(e) => setEditing({ ...editing, deposit_pct: +e.target.value })} />
               </label>
             )}
-            <label className="check-label">
-              <input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> Active
+              <label className="check-label">
+              <input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> 启用
             </label>
           </div>
           <div className="btn-row">
-            <button className="btn btn-primary" onClick={save}>Save service</button>
-            <button className="btn btn-ghost" onClick={() => setEditing(null)}>Cancel</button>
+            <button className="btn btn-primary" onClick={save}>保存服务</button>
+            <button className="btn btn-ghost" onClick={() => setEditing(null)}>取消</button>
           </div>
         </div>
       )}
@@ -215,8 +215,8 @@ function SchedulePanel({ schedules, breaks, setSchedules, setBreaks, onSave }: {
   return (
     <section className="panel">
       <div className="panel-head">
-        <h2>Weekly schedule</h2>
-        <button className="btn btn-primary btn-sm" onClick={onSave}>Save schedule</button>
+        <h2>每周营业时间</h2>
+        <button className="btn btn-primary btn-sm" onClick={onSave}>保存营业时间</button>
       </div>
       <div className="schedule-grid">
         {WEEKDAYS.map((day, wd) => (
@@ -226,17 +226,17 @@ function SchedulePanel({ schedules, breaks, setSchedules, setBreaks, onSave }: {
               <div className="btn-row">
                 <button className="btn btn-ghost btn-xs"
                   onClick={() => setSchedules([...schedules, { weekday: wd, start_time: '09:00', end_time: '17:00' }])}>
-                  + hours
+                  + 营业时段
                 </button>
                 <button className="btn btn-ghost btn-xs"
-                  onClick={() => setBreaks([...breaks, { weekday: wd, start_time: '13:00', end_time: '14:00', label: 'Break' }])}>
-                  + break
+                  onClick={() => setBreaks([...breaks, { weekday: wd, start_time: '13:00', end_time: '14:00', label: '休息' }])}>
+                  + 休息时段
                 </button>
               </div>
             </div>
             {schedules.map((s, i) => s.weekday === wd && (
               <div key={`s${i}`} className="window-row">
-                <span className="window-tag work">Open</span>
+                <span className="window-tag work">营业</span>
                 <input className="input input-time" type="time" value={hhmm(s.start_time)}
                   onChange={(e) => update(schedules, setSchedules, i, { start_time: e.target.value })} />
                 <span>–</span>
@@ -247,18 +247,18 @@ function SchedulePanel({ schedules, breaks, setSchedules, setBreaks, onSave }: {
             ))}
             {breaks.map((b, i) => b.weekday === wd && (
               <div key={`b${i}`} className="window-row">
-                <span className="window-tag break">Break</span>
+                <span className="window-tag break">休息</span>
                 <input className="input input-time" type="time" value={hhmm(b.start_time)}
                   onChange={(e) => update(breaks, setBreaks, i, { start_time: e.target.value })} />
                 <span>–</span>
                 <input className="input input-time" type="time" value={hhmm(b.end_time)}
                   onChange={(e) => update(breaks, setBreaks, i, { end_time: e.target.value })} />
-                <input className="input input-label" value={b.label} placeholder="Label"
+                <input className="input input-label" value={b.label} placeholder="标签"
                   onChange={(e) => update(breaks, setBreaks, i, { label: e.target.value })} />
                 <button className="btn btn-danger-ghost btn-xs" onClick={() => remove(breaks, setBreaks, i)}>✕</button>
               </div>
             ))}
-            {!schedules.some((s) => s.weekday === wd) && <p className="muted small">Closed</p>}
+            {!schedules.some((s) => s.weekday === wd) && <p className="muted small">休息</p>}
           </div>
         ))}
       </div>
@@ -282,30 +282,30 @@ function TimeOffPanel({ provider, onChanged }: { provider: Provider; onChanged: 
   }
 
   async function del(t: TimeOff) {
-    if (!window.confirm('Remove this time-off period?')) return;
+    if (!window.confirm('确定删除这段休息时间吗？')) return;
     await api.del(`/api/admin/time-off/${t.id}`);
     onChanged();
   }
 
   return (
     <section className="panel">
-      <h2>Time off</h2>
+      <h2>临时休息</h2>
       <div className="timeoff-form">
-        <label>From<input className="input" type="datetime-local" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} /></label>
-        <label>To<input className="input" type="datetime-local" value={form.ends_at} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} /></label>
-        <label>Reason<input className="input" placeholder="Vacation, maintenance…" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} /></label>
-        <button className="btn btn-primary" onClick={add}>Add</button>
+        <label>开始<input className="input" type="datetime-local" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} /></label>
+        <label>结束<input className="input" type="datetime-local" value={form.ends_at} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} /></label>
+        <label>原因<input className="input" placeholder="休假、维护…" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} /></label>
+        <button className="btn btn-primary" onClick={add}>添加</button>
       </div>
-      {(provider.time_off ?? []).length === 0 && <p className="muted small">No upcoming time off.</p>}
+      {(provider.time_off ?? []).length === 0 && <p className="muted small">暂无临时休息安排。</p>}
       {(provider.time_off ?? []).map((t) => (
         <div key={t.id} className="timeoff-row">
           <span>
-            {new Date(t.starts_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+            {new Date(t.starts_at).toLocaleString('zh-CN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
             {' → '}
-            {new Date(t.ends_at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+            {new Date(t.ends_at).toLocaleString('zh-CN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
           </span>
           <span className="muted">{t.reason}</span>
-          <button className="btn btn-danger-ghost btn-xs" onClick={() => del(t)}>Remove</button>
+          <button className="btn btn-danger-ghost btn-xs" onClick={() => del(t)}>删除</button>
         </div>
       ))}
     </section>

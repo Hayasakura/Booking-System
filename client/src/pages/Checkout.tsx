@@ -46,15 +46,15 @@ export default function Checkout() {
           });
         }
       })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Could not load this order'));
+      .catch((err) => setError(err instanceof ApiError ? err.message : '无法加载此订单'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code]);
 
   if (!booking || !payment) {
     return (
       <div className="container center-page">
-        {error ? <p className="error-box">{error}</p> : <p className="muted">Loading checkout…</p>}
-        <Link to="/manage" className="btn btn-ghost">Look up your booking</Link>
+        {error ? <p className="error-box">{error}</p> : <p className="muted">正在加载支付页面…</p>}
+        <Link to="/manage" className="btn btn-ghost">查询预约</Link>
       </div>
     );
   }
@@ -81,7 +81,7 @@ export default function Checkout() {
       });
       navigate('/confirmation', { state: { booking: detail } });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed');
+      setError(err instanceof Error ? err.message : '支付失败');
     } finally {
       setBusy(false);
     }
@@ -89,9 +89,9 @@ export default function Checkout() {
 
   return (
     <div className="container narrow-page">
-      <h1>Complete your payment</h1>
+      <h1>完成支付</h1>
       <p className="muted">
-        The slot is held for you {expired ? '— but the hold has expired' : 'while you pay'}.
+        该时间段已为你保留{expired ? '，但保留时间已过期' : '，请完成支付'}。
       </p>
 
       <div className="step-card">
@@ -106,34 +106,34 @@ export default function Checkout() {
           </span>
         </div>
         <div className="confirm-details">
-          <div><span>Code</span><strong className="mono">{booking.code}</strong></div>
-          <div><span>When</span><strong>{fmtDateTime(booking.starts_at)} – {fmtTime(booking.ends_at)}</strong></div>
-          <div><span>Price</span><strong>{money(booking.price_cents)}</strong></div>
+          <div><span>预约码</span><strong className="mono">{booking.code}</strong></div>
+          <div><span>时间</span><strong>{fmtDateTime(booking.starts_at)} – {fmtTime(booking.ends_at)}</strong></div>
+          <div><span>价格</span><strong>{money(booking.price_cents)}</strong></div>
           {(booking.discount_cents ?? 0) > 0 && (
-            <div><span>Discount{booking.coupon_code ? ` (${booking.coupon_code})` : ''}</span><strong>− {money(booking.discount_cents!)}</strong></div>
+            <div><span>优惠{booking.coupon_code ? ` (${booking.coupon_code})` : ''}</span><strong>− {money(booking.discount_cents!)}</strong></div>
           )}
-          <div><span>Due now</span><strong>{money(payment.amountCents)}</strong></div>
-          {balance > 0 && <div><span>Due at venue</span><strong>{money(balance)}</strong></div>}
+          <div><span>现在支付</span><strong>{money(payment.amountCents)}</strong></div>
+          {balance > 0 && <div><span>到店支付</span><strong>{money(balance)}</strong></div>}
         </div>
 
         {expired ? (
           <div>
-            <p className="error-box">The payment window expired and the slot was released. Please pick a new slot.</p>
-            <Link className="btn btn-primary" to={`/provider/${booking.provider_id}`}>Book again</Link>
+            <p className="error-box">支付时间已过，预约时间段已释放。请选择新的时间。</p>
+            <Link className="btn btn-primary" to={`/provider/${booking.provider_id}`}>重新预约</Link>
           </div>
         ) : (
           <div className="mockpay-card">
             <div className="mockpay-head">
-              <strong>MockPay</strong>
-              <span className="muted small">Simulated gateway — no real money moves</span>
+              <strong>模拟支付</strong>
+              <span className="muted small">模拟支付网关——不会产生真实扣款</span>
             </div>
             {error && <p className="error-box">{error}</p>}
             <div className="btn-row">
               <button className="btn btn-primary btn-lg" disabled={busy} onClick={() => pay('success')}>
-                {busy ? 'Processing…' : `Pay ${money(payment.amountCents)}`}
+                {busy ? '处理中…' : `支付 ${money(payment.amountCents)}`}
               </button>
               <button className="btn btn-ghost" disabled={busy} onClick={() => pay('failure')}>
-                Simulate failed payment
+                模拟支付失败
               </button>
             </div>
           </div>

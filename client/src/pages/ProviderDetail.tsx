@@ -85,14 +85,14 @@ export default function ProviderDetail() {
       );
       if (r.valid) {
         setCoupon({ code: r.code!, discountCents: r.discountCents! });
-        setCouponMsg(`Coupon ${r.code} applied — you save ${money(r.discountCents!)}`);
+        setCouponMsg(`优惠码 ${r.code} 已使用，已为你节省 ${money(r.discountCents!)}`);
       } else {
         setCoupon(null);
-        setCouponMsg(r.reason ?? 'Invalid coupon');
+        setCouponMsg(r.reason ?? '优惠码无效');
       }
     } catch (err) {
       setCoupon(null);
-      setCouponMsg(err instanceof Error ? err.message : 'Could not validate coupon');
+      setCouponMsg(err instanceof Error ? err.message : '无法验证优惠码');
     }
   }
 
@@ -134,18 +134,18 @@ export default function ProviderDetail() {
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        setError(err.message + ' The slot list has been refreshed.');
+        setError(err.message + ' 空档列表已刷新。');
         setSlot(null);
         setRefreshKey((k) => k + 1);
       } else {
-        setError(err instanceof Error ? err.message : 'Booking failed');
+        setError(err instanceof Error ? err.message : '预约失败');
       }
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (!provider) return <div className="container"><p className="muted">Loading…</p></div>;
+  if (!provider) return <div className="container"><p className="muted">正在加载…</p></div>;
 
   return (
     <div className="container detail-layout">
@@ -154,7 +154,7 @@ export default function ProviderDetail() {
         {fav.loggedIn && (
           <button
             className={`fav-btn ${fav.ids.has(provider.id) ? 'on' : ''}`}
-            title={fav.ids.has(provider.id) ? 'Remove from favorites' : 'Add to favorites'}
+            title={fav.ids.has(provider.id) ? '取消收藏' : '加入收藏'}
             onClick={() => fav.toggle(provider.id)}
           >
             {fav.ids.has(provider.id) ? '♥' : '♡'}
@@ -165,7 +165,7 @@ export default function ProviderDetail() {
         <p className="provider-title">{provider.title} <RatingBadge avg={provider.avg_rating} count={provider.review_count} /></p>
         <p className="provider-bio">{provider.bio}</p>
         <div className="hours-box">
-          <h3>Weekly hours</h3>
+          <h3>每周营业时间</h3>
           {WEEKDAYS.map((day, wd) => {
             const windows = (provider.schedules ?? []).filter((s) => s.weekday === wd);
             return (
@@ -174,7 +174,7 @@ export default function ProviderDetail() {
                 <span>
                   {windows.length
                     ? windows.map((w) => `${hhmm(w.start_time)}–${hhmm(w.end_time)}`).join(', ')
-                    : <em className="muted">Closed</em>}
+                    : <em className="muted">休息</em>}
                 </span>
               </div>
             );
@@ -185,7 +185,7 @@ export default function ProviderDetail() {
       {/* ---- booking flow ---- */}
       <section className="detail-main">
         <div className="step-card">
-          <h2><span className="step-num">1</span> Choose a service</h2>
+          <h2><span className="step-num">1</span> 选择服务</h2>
           <div className="service-list">
             {(provider.services ?? []).map((s) => (
               <button
@@ -199,7 +199,7 @@ export default function ProviderDetail() {
                 </div>
                 <div className="service-meta">
                   <span className="service-price">{money(s.price_cents)}</span>
-                  <span className="service-duration">{s.duration_min} min</span>
+                  <span className="service-duration">{s.duration_min} 分钟</span>
                 </div>
               </button>
             ))}
@@ -208,7 +208,7 @@ export default function ProviderDetail() {
 
         {service && (
           <div className="step-card">
-            <h2><span className="step-num">2</span> Pick a date &amp; time</h2>
+          <h2><span className="step-num">2</span> 选择日期和时间</h2>
             <SlotPicker
               provider={provider}
               serviceId={service.id}
@@ -225,38 +225,38 @@ export default function ProviderDetail() {
 
         {service && slot && (
           <div className="step-card">
-            <h2><span className="step-num">3</span> Your details</h2>
+          <h2><span className="step-num">3</span> 填写信息</h2>
             <div className="summary-bar">
-              {service.name} · {new Date(slot.start).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
-              {' '}at {fmtTime(slot.start)} · {money(netCents)}
+              {service.name} · {new Date(slot.start).toLocaleDateString('zh-CN', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {' '} {fmtTime(slot.start)} · {money(netCents)}
               {(couponDiscount > 0 || pointsDiscount > 0) && (
                 <s className="summary-strike">{money(service.price_cents)}</s>
               )}
               {dueNowCents > 0 && dueNowCents < netCents && (
-                <span className="summary-due"> · pay {money(dueNowCents)} now</span>
+                <span className="summary-due"> · 现在支付 {money(dueNowCents)}</span>
               )}
             </div>
             <form onSubmit={submit} className="booking-form">
               <div className="form-row">
                 <label>
-                  Full name *
+                  姓名 *
                   <input className="input" required minLength={2} value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </label>
                 <label>
-                  Email *
+                  邮箱 *
                   <input className="input" type="email" required value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </label>
               </div>
               <div className="form-row">
                 <label>
-                  Phone
+                  手机
                   <input className="input" value={form.phone}
                     onChange={(e) => setForm({ ...form, phone: e.target.value })} />
                 </label>
                 <label>
-                  Notes for the provider
+                  给服务商的备注
                   <input className="input" value={form.notes}
                     onChange={(e) => setForm({ ...form, notes: e.target.value })} />
                 </label>
@@ -264,17 +264,17 @@ export default function ProviderDetail() {
               {(service.payment_policy ?? 'none') === 'none' && (
                 <div className="form-row">
                   <label>
-                    Repeat
+                  重复预约
                     <select className="input" value={repeat}
                       onChange={(e) => setRepeat(e.target.value as typeof repeat)}>
-                      <option value="once">Just once</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="biweekly">Every 2 weeks</option>
+                      <option value="once">仅一次</option>
+                      <option value="weekly">每周</option>
+                      <option value="biweekly">每两周</option>
                     </select>
                   </label>
                   {repeat !== 'once' && (
                     <label>
-                      Number of sessions (2–12)
+                      预约次数（2–12）
                       <input className="input" type="number" min={2} max={12} value={occurrences}
                         onChange={(e) => setOccurrences(Math.max(2, Math.min(12, +e.target.value || 2)))} />
                     </label>
@@ -283,25 +283,25 @@ export default function ProviderDetail() {
               )}
               {repeat !== 'once' && (
                 <p className="muted small">
-                  Sessions repeat at the same time {repeat === 'weekly' ? 'every week' : 'every two weeks'}.
-                  Dates that are unavailable or outside the booking window are skipped and reported.
+                  每次预约将在同一时间{repeat === 'weekly' ? '每周' : '每两周'}重复。
+                  无法预约或超出可预约范围的日期将被跳过并显示。
                 </p>
               )}
               <div className="form-row">
                 <label>
-                  Coupon code
+                  优惠码
                   <div className="coupon-row">
-                    <input className="input" value={couponInput} placeholder="e.g. WELCOME10"
+                    <input className="input" value={couponInput} placeholder="例如 WELCOME10"
                       onChange={(e) => setCouponInput(e.target.value)} />
-                    <button type="button" className="btn btn-ghost" onClick={applyCoupon}>Apply</button>
+                    <button type="button" className="btn btn-ghost" onClick={applyCoupon}>使用</button>
                   </div>
                   {couponMsg && <span className={`small ${coupon ? 'coupon-ok' : 'coupon-bad'}`}>{couponMsg}</span>}
                 </label>
                 {user && pointsBalance > 0 && (
                   <label>
-                    Redeem points (you have {pointsBalance} = {money(pointsBalance * 100)})
+                    使用积分（你有 {pointsBalance} 积分 = {money(pointsBalance * 100)}）
                     <input className="input" type="number" min={0} max={maxRedeem} value={redeemPoints || ''}
-                      placeholder={maxRedeem > 0 ? `up to ${maxRedeem}` : 'not available'}
+                      placeholder={maxRedeem > 0 ? `最多 ${maxRedeem}` : '不可用'}
                       disabled={maxRedeem === 0}
                       onChange={(e) => setRedeemPoints(Math.max(0, Math.min(maxRedeem, +e.target.value || 0)))} />
                   </label>
@@ -310,16 +310,16 @@ export default function ProviderDetail() {
               {error && <p className="error-box">{error}</p>}
               <button className="btn btn-primary btn-lg" disabled={submitting}>
                 {submitting
-                  ? 'Booking…'
+                  ? '预约中…'
                   : repeat !== 'once'
-                    ? `Book ${occurrences} sessions — ${money(service.price_cents)} each`
+                    ? `预约 ${occurrences} 次 — 每次 ${money(service.price_cents)}`
                     : dueNowCents > 0
-                      ? `Pay ${money(dueNowCents)} & book`
-                      : `Confirm booking — ${money(netCents)}`}
+                      ? `支付 ${money(dueNowCents)} 并预约`
+                      : `确认预约 — ${money(netCents)}`}
               </button>
               {dueNowCents > 0 && dueNowCents < netCents && (
                 <p className="muted small">
-                  {money(dueNowCents)} deposit now · {money(netCents - dueNowCents)} at the venue.
+                  现在支付定金 {money(dueNowCents)} · 到店支付 {money(netCents - dueNowCents)}。
                 </p>
               )}
             </form>
@@ -328,7 +328,7 @@ export default function ProviderDetail() {
 
         {reviews.length > 0 && (
           <div className="step-card">
-            <h2>⭐ Reviews</h2>
+            <h2>⭐ 用户评价</h2>
             <div className="review-list">
               {reviews.map((r, i) => (
                 <div key={i} className="review-item">
@@ -336,7 +336,7 @@ export default function ProviderDetail() {
                     <Stars value={r.rating} />
                     <strong>{r.customer_name}</strong>
                     <span className="muted small">
-                      {r.service_name} · {new Date(r.created_at).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                      {r.service_name} · {new Date(r.created_at).toLocaleDateString('zh-CN', { month: 'short', year: 'numeric' })}
                     </span>
                   </div>
                   {r.comment && <p className="review-comment">{r.comment}</p>}

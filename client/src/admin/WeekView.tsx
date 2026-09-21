@@ -76,17 +76,17 @@ export default function WeekView() {
   return (
     <div>
       <div className="dayview-head">
-        <h1 className="admin-title">Week view</h1>
+        <h1 className="admin-title">周视图</h1>
         <div className="btn-row">
           <select className="input" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
-            <option value="">All providers</option>
+            <option value="">全部服务商</option>
             {providers.filter((p) => p.active).map((p) => (
               <option key={p.id} value={p.id}>{p.emoji} {p.name}</option>
             ))}
           </select>
-          <button className="btn btn-ghost" onClick={() => shift(-1)}>← Prev</button>
-          <button className="btn btn-ghost" onClick={() => setStart(toDateStr(mondayOf(new Date())))}>Today</button>
-          <button className="btn btn-ghost" onClick={() => shift(1)}>Next →</button>
+          <button className="btn btn-ghost" onClick={() => shift(-1)}>← 上一周</button>
+          <button className="btn btn-ghost" onClick={() => setStart(toDateStr(mondayOf(new Date())))}>今天</button>
+          <button className="btn btn-ghost" onClick={() => shift(1)}>下一周 →</button>
         </div>
       </div>
 
@@ -105,7 +105,7 @@ export default function WeekView() {
             <span className={`badge badge-${selected.status}`}>{STATUS_LABELS[selected.status] ?? selected.status}</span>
           </p>
           <Link className="panel-link" to={`/admin/bookings?search=${selected.code}`}>
-            Open in bookings →
+            在预约列表中打开 →
           </Link>
         </div>
       )}
@@ -119,7 +119,7 @@ export default function WeekView() {
               <div key={key} className={`tl-provider-head week-day-head ${key === todayKey ? 'is-today' : ''}`}>
                 <span>{WEEKDAYS_SHORT[d.getDay()]}</span>
                 <strong>{d.getDate()}</strong>
-                <span className="muted small">{d.toLocaleString('en', { month: 'short' })}</span>
+                <span className="muted small">{d.toLocaleString('zh-CN', { month: 'short' })}</span>
               </div>
             );
           })}
@@ -153,7 +153,7 @@ export default function WeekView() {
             );
           })}
         </div>
-        {bookings.length === 0 && <p className="muted center pad">No bookings this week.</p>}
+        {bookings.length === 0 && <p className="muted center pad">本周没有预约。</p>}
       </div>
     </div>
   );

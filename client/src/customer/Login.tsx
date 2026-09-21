@@ -33,7 +33,7 @@ export default function Login() {
       setSession(res.token, res.user);
       navigate(params.get('next') ?? '/account');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setError(err instanceof Error ? err.message : '出了点问题');
     } finally {
       setBusy(false);
     }
@@ -42,48 +42,48 @@ export default function Login() {
   return (
     <div className="container narrow-page">
       <div className="step-card auth-card">
-        <h1>{mode === 'signin' ? 'Welcome back' : 'Create your account'}</h1>
+        <h1>{mode === 'signin' ? '欢迎回来' : '创建你的账户'}</h1>
         <p className="muted">
           {mode === 'signin'
-            ? 'Sign in to see your bookings, points and favorites.'
-            : 'Past bookings made with this email are linked automatically.'}
+            ? '登录后查看你的预约、积分和收藏。'
+            : '使用此邮箱创建的历史预约会自动关联。'}
         </p>
         <div className="tabs">
           <button className={`tab ${mode === 'signin' ? 'active' : ''}`} onClick={() => setMode('signin')}>
-            Sign in
+            登录
           </button>
           <button className={`tab ${mode === 'signup' ? 'active' : ''}`} onClick={() => setMode('signup')}>
-            Create account
+            创建账户
           </button>
         </div>
         <form onSubmit={submit} className="booking-form">
           {mode === 'signup' && (
             <label>
-              Full name *
+              姓名 *
               <input className="input" required minLength={2} value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </label>
           )}
           <label>
-            Email *
+            邮箱 *
             <input className="input" type="email" required value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })} />
           </label>
           <label>
-            Password *
+            密码 *
             <input className="input" type="password" required minLength={mode === 'signup' ? 8 : 1}
               value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
           </label>
           {mode === 'signup' && (
             <label>
-              Phone
+              手机
               <input className="input" value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </label>
           )}
           {error && <p className="error-box">{error}</p>}
           <button className="btn btn-primary btn-lg" disabled={busy}>
-            {busy ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
+            {busy ? '请稍候…' : mode === 'signin' ? '登录' : '创建账户'}
           </button>
         </form>
       </div>

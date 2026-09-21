@@ -48,9 +48,9 @@ export default function Reviews() {
   return (
     <>
       <div className="admin-title-row">
-        <h1 className="admin-title">Reviews</h1>
+        <h1 className="admin-title">评价</h1>
         <select className="input" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
-          <option value="">All providers</option>
+          <option value="">全部服务商</option>
           {providers.map((p) => (
             <option key={p.id} value={p.id}>{p.emoji} {p.name}</option>
           ))}
@@ -58,12 +58,12 @@ export default function Reviews() {
       </div>
 
       <div className="panel">
-        {reviews.length === 0 && <p className="muted">No reviews yet.</p>}
+        {reviews.length === 0 && <p className="muted">暂无评价。</p>}
         <table className="table">
           {reviews.length > 0 && (
             <thead>
               <tr>
-                <th>Rating</th><th>Comment</th><th>Customer</th><th>Provider</th><th>Booking</th><th>Date</th><th></th>
+                <th>评分</th><th>评论</th><th>客户</th><th>服务商</th><th>预约</th><th>日期</th><th></th>
               </tr>
             </thead>
           )}
@@ -82,7 +82,7 @@ export default function Reviews() {
                     disabled={busyId === r.id}
                     onClick={() => toggle(r)}
                   >
-                    {r.hidden ? 'Unhide' : 'Hide'}
+                    {r.hidden ? '显示' : '隐藏'}
                   </button>
                 </td>
               </tr>

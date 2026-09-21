@@ -15,7 +15,7 @@ export function Stars({ value, onChange }: StarsProps) {
     );
   }
   return (
-    <span className="stars stars-input" role="radiogroup" aria-label="Rating">
+    <span className="stars stars-input" role="radiogroup" aria-label="评分">
       {[1, 2, 3, 4, 5].map((i) => (
         <button
           key={i}

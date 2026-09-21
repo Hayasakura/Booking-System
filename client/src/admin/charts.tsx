@@ -82,7 +82,7 @@ export function BarChart({ data, color, valueFmt, height = 180 }: {
 
 /** Weekday × hour demand heatmap: CSS grid, one-hue lightness ramp, max labeled. */
 export function Heatmap({ cells }: { cells: { dow: number; hour: number; count: number }[] }) {
-  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const DAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   const hours = Array.from({ length: 17 }, (_, i) => i + 6); // 06:00–22:00
   const byKey = new Map(cells.map((c) => [`${c.dow}:${c.hour}`, c.count]));
   const max = Math.max(...cells.map((c) => c.count), 1);
@@ -104,7 +104,7 @@ export function Heatmap({ cells }: { cells: { dow: number; hour: number; count: 
                 key={h}
                 className="heatmap-cell"
                 style={{ background: `color-mix(in srgb, var(--chart-volume) ${pct}%, var(--surface))` }}
-                title={`${day} ${String(h).padStart(2, '0')}:00 — ${count} booking${count === 1 ? '' : 's'}${count === max ? ' (peak)' : ''}`}
+                title={`${day} ${String(h).padStart(2, '0')}:00 — ${count} 个预约${count === max ? '（高峰）' : ''}`}
               >
                 {count === max && max > 0 ? <span className="heatmap-peak">{count}</span> : null}
               </div>

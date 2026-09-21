@@ -28,7 +28,7 @@ export default function AdminBookings() {
   useEffect(() => { api.get<Provider[]>('/api/admin/providers').then(setProviders).catch(() => {}); }, []);
 
   async function setStatus(b: Booking, status: string) {
-    const labels: Record<string, string> = { cancelled: 'Cancel this booking and email the customer?', completed: 'Mark as completed?', no_show: 'Mark as no-show?' };
+    const labels: Record<string, string> = { cancelled: '取消此预约并通知客户吗？', completed: '标记为已完成吗？', no_show: '标记为爽约吗？' };
     if (!window.confirm(labels[status])) return;
     setBusyId(b.id);
     setError('');
@@ -36,7 +36,7 @@ export default function AdminBookings() {
       await api.patch(`/api/admin/bookings/${b.id}/status`, { status });
       load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Update failed');
+      setError(e instanceof Error ? e.message : '更新失败');
     } finally {
       setBusyId(null);
     }
@@ -53,7 +53,7 @@ export default function AdminBookings() {
       if (filters.search) q.set('search', filters.search);
       await downloadFile(`/api/admin/bookings.csv?${q}`, `bookings-${new Date().toISOString().slice(0, 10)}.csv`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Export failed');
+      setError(e instanceof Error ? e.message : '导出失败');
     } finally {
       setExporting(false);
     }
@@ -62,26 +62,26 @@ export default function AdminBookings() {
   return (
     <div>
       <div className="admin-title-row">
-        <h1 className="admin-title">Bookings</h1>
+        <h1 className="admin-title">预约</h1>
         <button className="btn btn-ghost btn-sm" disabled={exporting} onClick={exportCsv}>
-          {exporting ? 'Exporting…' : '⬇️ Export CSV'}
+          {exporting ? '导出中…' : '⬇️ 导出 CSV'}
         </button>
       </div>
       <div className="filter-bar">
-        <input className="input" placeholder="Search code / name / email"
+        <input className="input" placeholder="搜索预约码 / 姓名 / 邮箱"
           value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} />
         <select className="input" value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
-          <option value="">All statuses</option>
+          <option value="">全部状态</option>
           {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <select className="input" value={filters.providerId} onChange={(e) => setFilters({ ...filters, providerId: e.target.value })}>
-          <option value="">All providers</option>
+          <option value="">全部服务商</option>
           {providers.map((p) => <option key={p.id} value={p.id}>{p.emoji} {p.name}</option>)}
         </select>
         <input className="input" type="date" value={filters.date} onChange={(e) => setFilters({ ...filters, date: e.target.value })} />
         {(filters.status || filters.providerId || filters.date || filters.search) && (
           <button className="btn btn-ghost btn-sm" onClick={() => setFilters({ status: '', providerId: '', date: '', search: '' })}>
-            Clear
+            清除
           </button>
         )}
       </div>
@@ -91,7 +91,7 @@ export default function AdminBookings() {
       <div className="panel">
         <table className="table">
           <thead>
-            <tr><th>Code</th><th>Customer</th><th>Provider / Service</th><th>When</th><th>Price</th><th>Status</th><th></th></tr>
+            <tr><th>预约码</th><th>客户</th><th>服务商 / 服务</th><th>时间</th><th>价格</th><th>状态</th><th></th></tr>
           </thead>
           <tbody>
             {bookings.map((b) => (
@@ -108,25 +108,25 @@ export default function AdminBookings() {
                   </div>
                   <div className="muted small">{b.service_name}</div>
                 </td>
-                <td>{fmtDateTime(b.starts_at)}<div className="muted small">ends {fmtTime(b.ends_at)}</div></td>
+                <td>{fmtDateTime(b.starts_at)}<div className="muted small">结束于 {fmtTime(b.ends_at)}</div></td>
                 <td>{money(b.price_cents)}</td>
                 <td><span className={`badge badge-${b.status}`}>{STATUS_LABELS[b.status]}</span></td>
                 <td className="row-actions">
                   {b.status === 'confirmed' && (
                     <>
-                      <button className="btn btn-sm btn-ghost" title="Mark completed" onClick={() => setStatus(b, 'completed')}>✓</button>
-                      <button className="btn btn-sm btn-ghost" title="No-show" onClick={() => setStatus(b, 'no_show')}>👻</button>
-                      <button className="btn btn-sm btn-danger-ghost" title="Cancel" onClick={() => setStatus(b, 'cancelled')}>✕</button>
+                      <button className="btn btn-sm btn-ghost" title="标记完成" onClick={() => setStatus(b, 'completed')}>✓</button>
+                      <button className="btn btn-sm btn-ghost" title="爽约" onClick={() => setStatus(b, 'no_show')}>👻</button>
+                      <button className="btn btn-sm btn-danger-ghost" title="取消" onClick={() => setStatus(b, 'cancelled')}>✕</button>
                     </>
                   )}
                   {b.status === 'pending_payment' && (
-                    <button className="btn btn-sm btn-danger-ghost" title="Cancel unpaid hold" onClick={() => setStatus(b, 'cancelled')}>✕</button>
+                    <button className="btn btn-sm btn-danger-ghost" title="取消未付款保留" onClick={() => setStatus(b, 'cancelled')}>✕</button>
                   )}
                 </td>
               </tr>
             ))}
             {bookings.length === 0 && (
-              <tr><td colSpan={7} className="muted center">No bookings match these filters.</td></tr>
+              <tr><td colSpan={7} className="muted center">没有符合筛选条件的预约。</td></tr>
             )}
           </tbody>
         </table>

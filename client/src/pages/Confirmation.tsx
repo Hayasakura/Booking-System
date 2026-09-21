@@ -16,8 +16,8 @@ export default function Confirmation() {
   if (!booking) {
     return (
       <div className="container center-page">
-        <p className="muted">Nothing to show here.</p>
-        <Link to="/" className="btn btn-primary">Go home</Link>
+        <p className="muted">这里暂时没有内容。</p>
+        <Link to="/" className="btn btn-primary">返回首页</Link>
       </div>
     );
   }
@@ -26,12 +26,12 @@ export default function Confirmation() {
     <div className="container center-page">
       <div className="confirm-card">
         <div className="confirm-tick">✓</div>
-        <h1>{series ? `${series.booked.length} sessions booked!` : 'Booking confirmed!'}</h1>
+        <h1>{series ? `已预约 ${series.booked.length} 次！` : '预约成功！'}</h1>
         <p className="muted">
-          A confirmation email is on its way to <strong>{booking.customer_email}</strong>.
+          确认邮件已发送至 <strong>{booking.customer_email}</strong>。
         </p>
         <div className="confirm-code">
-          <span>{series ? 'Series code' : 'Booking code'}</span>
+          <span>{series ? '系列预约码' : '预约码'}</span>
           <strong>{series ? series.series.code : booking.code}</strong>
         </div>
         {series && (
@@ -45,7 +45,7 @@ export default function Confirmation() {
             </ul>
             {series.skipped.length > 0 && (
               <div className="error-box">
-                <strong>{series.skipped.length} date(s) couldn't be booked:</strong>
+                <strong>有 {series.skipped.length} 个日期无法预约：</strong>
                 <ul className="series-list">
                   {series.skipped.map((s) => (
                     <li key={s.start}>{fmtDateTime(s.start)} — {s.reason}</li>
@@ -56,23 +56,23 @@ export default function Confirmation() {
           </div>
         )}
         <div className="confirm-details">
-          <div><span>Provider</span><strong>{booking.emoji} {booking.provider_name}</strong></div>
-          <div><span>Service</span><strong>{booking.service_name}</strong></div>
-          <div><span>When</span><strong>{fmtDateTime(booking.starts_at)} – {fmtTime(booking.ends_at)}</strong></div>
-          <div><span>Price</span><strong>{money(booking.price_cents)}</strong></div>
+          <div><span>服务商</span><strong>{booking.emoji} {booking.provider_name}</strong></div>
+          <div><span>服务</span><strong>{booking.service_name}</strong></div>
+          <div><span>时间</span><strong>{fmtDateTime(booking.starts_at)} – {fmtTime(booking.ends_at)}</strong></div>
+          <div><span>价格</span><strong>{money(booking.price_cents)}</strong></div>
           {(booking.discount_cents ?? 0) > 0 && (
             <div>
-              <span>Discount{booking.coupon_code ? ` (${booking.coupon_code})` : ''}</span>
+              <span>优惠{booking.coupon_code ? ` (${booking.coupon_code})` : ''}</span>
               <strong>− {money(booking.discount_cents!)}</strong>
             </div>
           )}
           {(booking.amount_due_cents ?? 0) > 0 && (
-            <div><span>Paid online</span><strong>{money(booking.amount_due_cents!)}</strong></div>
+            <div><span>线上已付</span><strong>{money(booking.amount_due_cents!)}</strong></div>
           )}
           {(booking.amount_due_cents ?? 0) > 0 &&
             booking.price_cents - (booking.discount_cents ?? 0) - booking.amount_due_cents! > 0 && (
             <div>
-              <span>Due at venue</span>
+              <span>到店支付</span>
               <strong>{money(booking.price_cents - (booking.discount_cents ?? 0) - booking.amount_due_cents!)}</strong>
             </div>
           )}
@@ -80,13 +80,13 @@ export default function Confirmation() {
         <div className="confirm-actions">
           {(booking.amount_due_cents ?? 0) > 0 && (
             <Link className="btn btn-ghost" to={`/receipt/${booking.code}?email=${encodeURIComponent(booking.customer_email)}`}>
-              🧾 Receipt
+              🧾 收据
             </Link>
           )}
           <Link className="btn btn-ghost" to={`/manage?code=${booking.code}&email=${encodeURIComponent(booking.customer_email)}`}>
-            Manage booking
+            管理预约
           </Link>
-          <Link className="btn btn-primary" to="/">Book another</Link>
+          <Link className="btn btn-primary" to="/">再次预约</Link>
         </div>
       </div>
     </div>

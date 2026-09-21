@@ -24,7 +24,7 @@ export default function WaitlistForm({ providerId, serviceId, date }: Props) {
       await api.post('/api/waitlist', { providerId, serviceId, date, customer: form });
       setDone(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not join the waitlist');
+      setError(err instanceof Error ? err.message : '无法加入候补名单');
     } finally {
       setBusy(false);
     }
@@ -33,26 +33,26 @@ export default function WaitlistForm({ providerId, serviceId, date }: Props) {
   if (done) {
     return (
       <p className="flash flash-ok">
-        You're on the waitlist for this day — we'll email you the moment a slot opens. 🎉
+        你已加入当天的候补名单——有空档时我们会立即通过邮件通知你。🎉
       </p>
     );
   }
 
   return (
     <form onSubmit={submit} className="waitlist-form">
-      <strong>Fully booked — want us to watch this day for you?</strong>
+      <strong>当天已约满——要不要让我们帮你留意？</strong>
       <p className="muted small">
-        If a slot frees up, the first few people on the waitlist get an email. First to book wins.
+        如果有空档，候补名单前几位会收到邮件通知，先到先得。
       </p>
       <div className="form-row">
-        <input className="input" placeholder="Your name" required minLength={2}
+        <input className="input" placeholder="你的姓名" required minLength={2}
           value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <input className="input" type="email" placeholder="Email" required
+        <input className="input" type="email" placeholder="邮箱" required
           value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
       </div>
       {error && <p className="error-box">{error}</p>}
       <button className="btn btn-ghost" disabled={busy}>
-        {busy ? 'Joining…' : '🔔 Notify me if a slot opens'}
+        {busy ? '加入中…' : '🔔 有空档时通知我'}
       </button>
     </form>
   );

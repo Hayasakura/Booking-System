@@ -9,14 +9,15 @@ async function main() {
     await client.query(
       `TRUNCATE notifications, waitlist, reviews, loyalty_ledger, favorites, refunds, payments,
                 coupons, booking_events, bookings, booking_series, customers, time_off, breaks,
-                schedules, services, providers, users
+                schedules, services, providers
        RESTART IDENTITY CASCADE`
     );
 
     // ---- admin user -------------------------------------------------------
     const hash = await bcrypt.hash('admin123', 10);
     await client.query(
-      `INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3)`,
+      `INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3)
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash, name = EXCLUDED.name`,
       ['admin@bookit.local', hash, 'Admin']
     );
 
@@ -31,71 +32,71 @@ async function main() {
 
     const providers: P[] = [
       {
-        type: 'doctor', name: 'Dr. Asha Rao', title: 'Cardiologist', emoji: '🩺', color: '#0ea5e9',
-        bio: '15+ years in preventive cardiology. MBBS, MD (Cardiology). Known for unhurried consultations.',
+        type: 'doctor', name: 'Asha Rao 医生', title: '心脏科医生', emoji: '🩺', color: '#0ea5e9',
+        bio: '拥有 15 年以上预防性心脏病学经验，MBBS、心脏病学 MD。以耐心细致的问诊著称。',
         step: 15, lead: 120, horizon: 21,
         services: [
-          ['New patient consultation', 'Full history, examination and ECG review', 30, 10, 80000],
-          ['Follow-up visit', 'Review of reports and medication adjustment', 15, 5, 50000],
-          ['Echo screening', 'Echocardiogram with same-visit reading', 45, 15, 250000],
+          ['初诊咨询', '完整病史、检查与心电图解读', 30, 10, 80000],
+          ['复诊', '检查报告解读与用药调整', 15, 5, 50000],
+          ['心脏超声筛查', '心脏超声检查并当场解读', 45, 15, 250000],
         ],
         hours: { 1: [['09:00', '13:00'], ['17:00', '20:00']], 2: [['09:00', '13:00'], ['17:00', '20:00']], 3: [['09:00', '13:00']], 4: [['09:00', '13:00'], ['17:00', '20:00']], 5: [['09:00', '13:00']], 6: [['10:00', '14:00']] },
-        breaks: [[1, '11:00', '11:15', 'Tea break'], [2, '11:00', '11:15', 'Tea break'], [4, '11:00', '11:15', 'Tea break']],
+        breaks: [[1, '11:00', '11:15', '茶歇'], [2, '11:00', '11:15', '茶歇'], [4, '11:00', '11:15', '茶歇']],
       },
       {
-        type: 'doctor', name: 'Dr. Kabir Mehta', title: 'Dermatologist', emoji: '🧴', color: '#14b8a6',
-        bio: 'Skin, hair and nail specialist. MD (Dermatology), fellowship in cosmetic dermatology.',
+        type: 'doctor', name: 'Kabir Mehta 医生', title: '皮肤科医生', emoji: '🧴', color: '#14b8a6',
+        bio: '专注皮肤、头发和指甲问题，皮肤科 MD，拥有美容皮肤科进修经历。',
         step: 20, lead: 60, horizon: 30,
         services: [
-          ['Consultation', 'Diagnosis and treatment plan', 20, 5, 60000],
-          ['Chemical peel session', 'Includes post-care kit', 40, 20, 180000],
-          ['Mole / skin-tag removal', 'Minor procedure under local anaesthesia', 30, 15, 220000],
+          ['问诊', '诊断与治疗方案', 20, 5, 60000],
+          ['化学换肤', '包含术后护理套装', 40, 20, 180000],
+          ['痣 / 皮赘去除', '局部麻醉下的小型操作', 30, 15, 220000],
         ],
         hours: { 1: [['10:00', '18:00']], 2: [['10:00', '18:00']], 3: [['10:00', '18:00']], 4: [['10:00', '18:00']], 5: [['10:00', '18:00']] },
-        breaks: [[1, '13:30', '14:30', 'Lunch'], [2, '13:30', '14:30', 'Lunch'], [3, '13:30', '14:30', 'Lunch'], [4, '13:30', '14:30', 'Lunch'], [5, '13:30', '14:30', 'Lunch']],
+        breaks: [[1, '13:30', '14:30', '午休'], [2, '13:30', '14:30', '午休'], [3, '13:30', '14:30', '午休'], [4, '13:30', '14:30', '午休'], [5, '13:30', '14:30', '午休']],
       },
       {
-        type: 'salon', name: 'Meera @ Glow Studio', title: 'Senior Stylist', emoji: '💇‍♀️', color: '#ec4899',
-        bio: 'Color specialist and bridal stylist. 10 years with Toni&Guy before founding Glow Studio.',
+        type: 'salon', name: 'Meera @ Glow 美发工作室', title: '资深造型师', emoji: '💇‍♀️', color: '#ec4899',
+        bio: '专注染发与新娘造型。在创立 Glow 美发工作室前，曾在 Toni&Guy 工作 10 年。',
         step: 15, lead: 30, horizon: 14,
         services: [
-          ['Haircut & blow-dry', 'Consultation, wash, cut and style', 45, 15, 120000],
-          ['Global hair color', 'Ammonia-free color, includes wash', 90, 15, 350000],
-          ['Bridal trial makeup', 'Full trial with photos', 120, 30, 600000],
-          ['Quick trim', 'Maintenance trim, dry cut', 20, 10, 60000],
+          ['剪发与吹风造型', '咨询、洗发、剪发与造型', 45, 15, 120000],
+          ['全头染发', '无氨染发，包含洗发', 90, 15, 350000],
+          ['新娘妆试妆', '完整试妆并拍照', 120, 30, 600000],
+          ['快速修剪', '日常维护修剪，干剪', 20, 10, 60000],
         ],
         hours: { 0: [['11:00', '17:00']], 2: [['10:00', '20:00']], 3: [['10:00', '20:00']], 4: [['10:00', '20:00']], 5: [['10:00', '20:00']], 6: [['09:00', '21:00']] },
-        breaks: [[6, '13:00', '13:45', 'Lunch']],
+        breaks: [[6, '13:00', '13:45', '午休']],
       },
       {
-        type: 'salon', name: 'Arjun @ FadeLab', title: 'Barber & Groomer', emoji: '💈', color: '#f59e0b',
-        bio: 'Precision fades, beard sculpting and hot-towel shaves. Walk-ins never; bookings always.',
+        type: 'salon', name: 'Arjun @ FadeLab 理发店', title: '理发与造型师', emoji: '💈', color: '#f59e0b',
+        bio: '专注精准渐变、胡须修型和热毛巾剃须。不接受临时到店，只接受预约。',
         step: 10, lead: 30, horizon: 14,
         services: [
-          ['Skin fade + beard', 'Signature fade with beard line-up', 40, 10, 90000],
-          ['Classic haircut', 'Scissor cut and style', 30, 10, 60000],
-          ['Hot-towel shave', 'Straight razor, hot towel ritual', 25, 5, 50000],
+          ['净肤渐变 + 胡须', '招牌渐变发型与胡须修线', 40, 10, 90000],
+          ['经典理发', '剪刀剪发与造型', 30, 10, 60000],
+          ['热毛巾剃须', '直剃刀与热毛巾护理', 25, 5, 50000],
         ],
         hours: { 0: [['10:00', '16:00']], 1: [['11:00', '20:00']], 3: [['11:00', '20:00']], 4: [['11:00', '20:00']], 5: [['11:00', '21:00']], 6: [['10:00', '21:00']] },
       },
       {
-        type: 'turf', name: 'GreenKick Arena — Turf 1', title: '5-a-side football turf', emoji: '⚽', color: '#22c55e',
-        bio: 'FIFA-approved artificial grass, floodlights, changing rooms. Max 12 players.',
+        type: 'turf', name: 'GreenKick 体育馆 — 场地 1', title: '五人制足球场', emoji: '⚽', color: '#22c55e',
+        bio: 'FIFA 认证人造草坪，配备泛光灯和更衣室，最多容纳 12 人。',
         step: 30, lead: 60, horizon: 30,
         services: [
-          ['1 hour slot', 'Full turf, ball included', 60, 0, 120000],
-          ['1.5 hour slot', 'Full turf, ball included', 90, 0, 170000],
-          ['2 hour slot', 'Full turf, ball + bibs included', 120, 0, 220000],
+          ['1 小时场地', '整块场地，包含足球', 60, 0, 120000],
+          ['1.5 小时场地', '整块场地，包含足球', 90, 0, 170000],
+          ['2 小时场地', '整块场地，包含足球和分队背心', 120, 0, 220000],
         ],
         hours: { 0: [['06:00', '23:00']], 1: [['06:00', '23:00']], 2: [['06:00', '23:00']], 3: [['06:00', '23:00']], 4: [['06:00', '23:00']], 5: [['06:00', '23:00']], 6: [['06:00', '23:00']] },
       },
       {
-        type: 'turf', name: 'SmashPoint — Badminton Court 2', title: 'Indoor synthetic court', emoji: '🏸', color: '#8b5cf6',
-        bio: 'BWF-standard synthetic flooring, tournament lighting, rackets on rent.',
+        type: 'turf', name: 'SmashPoint — 羽毛球场 2', title: '室内合成地板球场', emoji: '🏸', color: '#8b5cf6',
+        bio: 'BWF 标准合成地板，配备赛事级照明，可租借球拍。',
         step: 30, lead: 30, horizon: 21,
         services: [
-          ['1 hour court booking', 'Court + shuttles (feather extra)', 60, 0, 40000],
-          ['2 hour court booking', 'Court + shuttles (feather extra)', 120, 0, 75000],
+          ['1 小时球场预约', '球场与羽毛球（羽毛球另计）', 60, 0, 40000],
+          ['2 小时球场预约', '球场与羽毛球（羽毛球另计）', 120, 0, 75000],
         ],
         hours: { 0: [['06:00', '22:00']], 1: [['06:00', '22:00']], 2: [['06:00', '22:00']], 3: [['06:00', '22:00']], 4: [['06:00', '22:00']], 5: [['06:00', '22:00']], 6: [['06:00', '22:00']] },
       },
@@ -207,11 +208,11 @@ async function main() {
     };
     // providerIdx, serviceIdx, daysAgo, hour, customerIdx, durationMin, rating, comment
     const history: [number, number, number, number, number, number, number, string][] = [
-      [0, 0, 12, 10, 3, 30, 5, 'Dr. Rao took her time and explained everything clearly. Highly recommend.'],
-      [2, 0, 8, 11, 3, 45, 4, 'Lovely haircut, though I had to wait a few minutes past my slot.'],
-      [4, 0, 5, 19, 0, 60, 5, 'Great turf, floodlights and grass in top shape!'],
-      [3, 0, 3, 12, 1, 40, 4, 'Sharp fade, easy booking.'],
-      [1, 0, 2, 15, 2, 20, 5, 'Quick, professional consultation.'],
+      [0, 0, 12, 10, 3, 30, 5, 'Rao 医生问诊耐心，解释得非常清楚，强烈推荐。'],
+      [2, 0, 8, 11, 3, 45, 4, '剪发效果很好，不过比预约时间晚了几分钟。'],
+      [4, 0, 5, 19, 0, 60, 5, '场地很棒，泛光灯和草坪都保持得很好！'],
+      [3, 0, 3, 12, 1, 40, 4, '渐变发型很利落，预约也很方便。'],
+      [1, 0, 2, 15, 2, 20, 5, '问诊快速而专业。'],
     ];
     for (const [pi, si, daysAgo, h, ci, dur, rating, comment] of history) {
       const start = past(daysAgo, h);

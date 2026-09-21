@@ -26,34 +26,34 @@ export default function CustomerDetail() {
     setFlash('');
     try {
       await api.patch(`/api/admin/customers/${id}/notes`, { notes });
-      setFlash('Notes saved');
+      setFlash('备注已保存');
     } catch (err) {
-      setFlash(err instanceof ApiError ? err.message : 'Save failed');
+      setFlash(err instanceof ApiError ? err.message : '保存失败');
     } finally {
       setBusy(false);
     }
   }
 
-  if (!customer) return <p className="muted">Loading customer…</p>;
+  if (!customer) return <p className="muted">正在加载客户…</p>;
 
   const tiles = [
-    { label: 'Bookings', value: customer.booking_count, icon: '🗓️' },
-    { label: 'Lifetime spend', value: money(customer.total_spend_cents), icon: '💰' },
-    { label: 'Points balance', value: customer.points_balance, icon: '⭐' },
-    { label: 'No-shows', value: customer.no_show_count, icon: '🚫' },
-    { label: 'Last visit', value: customer.last_visit ? fmtDate(customer.last_visit) : '—', icon: '📍' },
+    { label: '预约数', value: customer.booking_count, icon: '🗓️' },
+    { label: '累计消费', value: money(customer.total_spend_cents), icon: '💰' },
+    { label: '积分余额', value: customer.points_balance, icon: '⭐' },
+    { label: '爽约次数', value: customer.no_show_count, icon: '🚫' },
+    { label: '最近到访', value: customer.last_visit ? fmtDate(customer.last_visit) : '—', icon: '📍' },
   ];
 
   return (
     <>
       <div className="admin-title-row">
         <h1 className="admin-title">
-          {customer.name} {customer.has_account && <span title="Has an account">👤</span>}
+          {customer.name} {customer.has_account && <span title="已有账户">👤</span>}
         </h1>
-        <Link className="btn btn-ghost btn-sm" to="/admin/customers">← All customers</Link>
+        <Link className="btn btn-ghost btn-sm" to="/admin/customers">← 全部客户</Link>
       </div>
       <p className="muted">
-        {customer.email}{customer.phone ? ` · ${customer.phone}` : ''} · customer since {fmtDate(customer.created_at)}
+        {customer.email}{customer.phone ? ` · ${customer.phone}` : ''} · 客户创建于 {fmtDate(customer.created_at)}
       </p>
 
       <div className="stat-grid">
@@ -70,26 +70,26 @@ export default function CustomerDetail() {
 
       <div className="panel">
         <div className="panel-head">
-          <h2>Private notes</h2>
+          <h2>私密备注</h2>
           {flash && <span className="flash flash-ok">{flash}</span>}
         </div>
         <textarea className="input" rows={3} maxLength={5000} value={notes}
-          placeholder="Preferences, allergies, VIP status…"
+          placeholder="偏好、过敏信息、VIP 状态…"
           onChange={(e) => setNotes(e.target.value)} />
         <div className="btn-row" style={{ marginTop: 10 }}>
           <button className="btn btn-primary btn-sm" disabled={busy} onClick={saveNotes}>
-            {busy ? 'Saving…' : 'Save notes'}
+            {busy ? '保存中…' : '保存备注'}
           </button>
         </div>
       </div>
 
       <div className="panel">
-        <h2>Booking history</h2>
-        {customer.bookings.length === 0 && <p className="muted">No bookings yet.</p>}
+        <h2>预约记录</h2>
+        {customer.bookings.length === 0 && <p className="muted">暂无预约。</p>}
         {customer.bookings.length > 0 && (
           <table className="table">
             <thead>
-              <tr><th>Code</th><th>Provider</th><th>Service</th><th>When</th><th>Paid</th><th>Status</th></tr>
+              <tr><th>预约码</th><th>服务商</th><th>服务</th><th>时间</th><th>已付</th><th>状态</th></tr>
             </thead>
             <tbody>
               {customer.bookings.map((b) => (

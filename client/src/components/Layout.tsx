@@ -12,14 +12,14 @@ export default function Layout() {
             <span className="brand-mark">📅</span> Book<span className="brand-accent">It</span>
           </Link>
           <nav className="site-nav">
-            <NavLink to="/browse/doctor">Doctors</NavLink>
-            <NavLink to="/browse/salon">Salons</NavLink>
-            <NavLink to="/browse/turf">Turfs</NavLink>
-            <NavLink to="/manage" className="nav-pill">Manage booking</NavLink>
+            <NavLink to="/browse/doctor">医生</NavLink>
+            <NavLink to="/browse/salon">沙龙</NavLink>
+            <NavLink to="/browse/turf">场地</NavLink>
+            <NavLink to="/manage" className="nav-pill">管理预约</NavLink>
             {user ? (
               <NavLink to="/account" className="nav-pill">👤 {user.name.split(' ')[0]}</NavLink>
             ) : (
-              <NavLink to="/account/login" className="nav-pill">Sign in</NavLink>
+              <NavLink to="/account/login" className="nav-pill">登录</NavLink>
             )}
             <ThemeToggle />
           </nav>
@@ -30,8 +30,8 @@ export default function Layout() {
       </main>
       <footer className="site-footer">
         <div className="container footer-row">
-          <span>BookIt — Appointment Booking System</span>
-          <Link to="/admin">Admin panel →</Link>
+          <span>BookIt — 预约管理系统</span>
+          <Link to="/admin">管理后台 →</Link>
         </div>
       </footer>
     </div>
