@@ -1,4 +1,3 @@
-export const money = (cents: number) => `₹${(cents / 100).toLocaleString('en-IN')}`;
 
 export const WEEKDAYS = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
 export const WEEKDAYS_SHORT = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
@@ -27,7 +26,6 @@ export const addDays = (d: Date, n: number) => {
 export const hhmm = (t: string) => t.slice(0, 5);
 
 export const STATUS_LABELS: Record<string, string> = {
-  pending_payment: '待付款',
   confirmed: '已确认',
   completed: '已完成',
   cancelled: '已取消',

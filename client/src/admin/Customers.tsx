@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
-import { fmtDate, money } from '../format';
+import { fmtDate } from '../format';
 
 export interface CrmCustomer {
   id: number;
@@ -10,9 +10,7 @@ export interface CrmCustomer {
   phone: string;
   created_at: string;
   has_account: boolean;
-  points_balance: number;
   booking_count: number;
-  total_spend_cents: number;
   last_visit: string | null;
   no_show_count: number;
   upcoming: number;
@@ -40,7 +38,6 @@ export default function Customers() {
           value={search} onChange={(e) => setSearch(e.target.value)} />
         <select className="input" value={sort} onChange={(e) => setSort(e.target.value)}>
           <option value="recent">最近到访</option>
-          <option value="spend">消费最高</option>
           <option value="bookings">预约最多</option>
           <option value="name">姓名 A–Z</option>
         </select>
@@ -52,7 +49,7 @@ export default function Customers() {
           <table className="table">
             <thead>
               <tr>
-                <th>客户</th><th>预约数</th><th>消费</th><th>积分</th>
+                <th>用户</th><th>预约数</th>
                 <th>最近到访</th><th>爽约次数</th><th>即将到来</th>
               </tr>
             </thead>
@@ -66,8 +63,6 @@ export default function Customers() {
                     <div className="muted small">{c.email}{c.phone ? ` · ${c.phone}` : ''}</div>
                   </td>
                   <td>{c.booking_count}</td>
-                  <td>{money(c.total_spend_cents)}</td>
-                  <td>{c.points_balance}</td>
                   <td className="small">{c.last_visit ? fmtDate(c.last_visit) : '—'}</td>
                   <td>
                     {c.no_show_count > 0

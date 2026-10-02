@@ -23,7 +23,6 @@ const ERROR_TRANSLATIONS: Array<[RegExp, string]> = [
   [/^Invalid email or password$/, '邮箱或密码错误'],
   [/^Invalid or expired token$/, '登录已失效，请重新登录'],
   [/^Sign in to continue$/, '请登录后继续'],
-  [/^Sign in to redeem points$/, '请登录后使用积分'],
   [/^Provider not found$/, '未找到服务商'],
   [/^Service not found$/, '未找到服务'],
   [/^Customer not found$/, '未找到客户'],
@@ -35,10 +34,6 @@ const ERROR_TRANSLATIONS: Array<[RegExp, string]> = [
   [/^Pick a date that is today or later$/, '请选择今天或之后的日期'],
   [/^Order not found$/, '未找到订单'],
   [/^Order already paid$/, '订单已经支付'],
-  [/^Payment failed \(simulated\).*$/, '支付失败（模拟支付），在保留时间结束前可以重试'],
-  [/^Invalid payment signature$/, '支付签名无效'],
-  [/^No refundable payment found$/, '未找到可退款的支付记录'],
-  [/^This payment is already fully refunded$/, '此支付记录已经全部退款'],
   [/^Validation failed$/, '数据校验失败'],
   [/^Internal server error$/, '服务器内部错误'],
 ];

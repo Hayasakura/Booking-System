@@ -79,9 +79,9 @@ export async function computeSlots(
   );
   const bookings = await db.query(
     // status list MUST match the bookings_no_overlap constraint's WHERE
-    // clause exactly — pending_payment holds its slot while being paid for
+    // clause exactly — confirmed and completed bookings occupy the slot
     `SELECT starts_at, ends_at FROM bookings
-     WHERE provider_id = $1 AND status IN ('pending_payment','confirmed','completed')
+     WHERE provider_id = $1 AND status IN ('confirmed','completed')
        AND starts_at < $3 AND ends_at > $2
        AND ($4::int IS NULL OR id <> $4)`,
     [providerId, dayStart, dayEnd, excludeBookingId ?? null]

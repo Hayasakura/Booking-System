@@ -140,7 +140,7 @@ export default function WeekView() {
                 {(byDay.get(key) ?? []).map((b) => (
                   <button
                     key={b.id}
-                    className={`tl-booking tl-clickable ${b.status === 'pending_payment' ? 'tl-pending' : ''}`}
+                    className="tl-booking tl-clickable"
                     style={{ top: top(b.starts_at), height: Math.max(height(b) - 2, 18), borderLeftColor: b.color }}
                     title={`${b.code} — ${b.customer_name} (${b.service_name})`}
                     onClick={() => setSelected(b)}

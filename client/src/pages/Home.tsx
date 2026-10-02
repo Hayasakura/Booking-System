@@ -12,15 +12,15 @@ export default function Home() {
 
   return (
     <div className="container">
-      <section className="hero">
+      <section className="hero campus-hero">
         <h1>
-          预约你需要的一切。<br />
-          <span className="hero-accent">医生、沙龙与运动场地。</span>
+          校园资源，<br />
+          <span className="hero-accent">按你的学习计划预约。</span>
         </h1>
         <p className="hero-sub">
-          实时查看空闲时间，杜绝重复预约，邮件即时确认。
-          选择一个类别开始预约。
+          自习空间、会议室和实验设备统一管理。实时查看空闲时段，提交后立即获得预约确认。
         </p>
+        <div className="hero-actions"><Link className="btn btn-primary btn-lg" to="/browse/study_room">开始查找资源</Link><Link className="btn btn-ghost btn-lg" to="/manage">管理我的预约</Link></div>
       </section>
 
       <section className="category-grid">
@@ -38,22 +38,22 @@ export default function Home() {
         <div className="feature">
           <span>⚡</span>
           <div>
-            <h3>实时空档</h3>
-            <p>空档根据真实营业时间、休息时间和现有预约动态计算。</p>
+            <h3>实时可用</h3>
+            <p>根据开放时间、维护安排和已有预约动态计算可用时段。</p>
           </div>
         </div>
         <div className="feature">
           <span>🔒</span>
           <div>
-            <h3>杜绝时间冲突</h3>
-            <p>数据库级排他约束让重复预约不可能发生。</p>
+            <h3>防止重复预约</h3>
+            <p>前端校验加数据库排他约束，确保同一资源不会被重复占用。</p>
           </div>
         </div>
         <div className="feature">
           <span>📧</span>
           <div>
-            <h3>邮件确认</h3>
-            <p>即时发送确认和取消邮件，并附带预约管理链接。</p>
+            <h3>状态清晰</h3>
+            <p>加载、失败、无数据和成功结果都有明确反馈，预约过程更安心。</p>
           </div>
         </div>
       </section>

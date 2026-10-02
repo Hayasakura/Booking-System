@@ -6,7 +6,6 @@ import { asyncHandler } from '../middleware/errors.js';
 import { requireCustomer, signCustomerToken } from '../middleware/auth.js';
 import { getBookingDetail, rescheduleBooking } from '../services/booking.js';
 import { submitReview } from '../services/reviews.js';
-import { getBalance } from '../services/loyalty.js';
 import { wake } from '../services/notify/dispatcher.js';
 
 export const customerRouter = Router();
@@ -65,23 +64,6 @@ customerRouter.get('/me', asyncHandler(async (req, res) => {
     'SELECT id, name, email, phone, created_at FROM customers WHERE id = $1', [req.customer!.sub]
   );
   if (!customer) return res.status(404).json({ error: 'Account not found' });
-  res.json({ ...customer, points_balance: await getBalance(pool, customer.id) });
-}));
-
-customerRouter.get('/loyalty', asyncHandler(async (req, res) => {
-  const [balance, ledger] = await Promise.all([
-    getBalance(pool, req.customer!.sub),
-    pool.query(
-      `SELECT l.points, l.reason, l.detail, l.created_at, b.code AS booking_code
-       FROM loyalty_ledger l
-       LEFT JOIN bookings b ON b.id = l.booking_id
-       WHERE l.customer_id = $1
-       ORDER BY l.created_at DESC
-       LIMIT 100`,
-      [req.customer!.sub]
-    ),
-  ]);
-  res.json({ balance, ledger: ledger.rows });
 }));
 
 customerRouter.patch('/me', asyncHandler(async (req, res) => {
@@ -100,7 +82,7 @@ customerRouter.get('/bookings', asyncHandler(async (req, res) => {
     `SELECT b.*,
             c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
             s.name AS service_name, s.duration_min,
-            p.name AS provider_name, p.title AS provider_title, p.business_type, p.emoji, p.color,
+            p.name AS provider_name, p.title AS provider_title, p.resource_type, p.emoji, p.color,
             p.reschedule_cutoff_min,
             EXISTS(SELECT 1 FROM reviews r WHERE r.booking_id = b.id) AS reviewed
      FROM bookings b
@@ -120,8 +102,8 @@ customerRouter.get('/favorites', asyncHandler(async (req, res) => {
     `SELECT p.*,
             COALESCE(json_agg(json_build_object(
               'id', s.id, 'name', s.name, 'description', s.description,
-              'duration_min', s.duration_min, 'buffer_min', s.buffer_min, 'price_cents', s.price_cents
-            ) ORDER BY s.price_cents) FILTER (WHERE s.id IS NOT NULL), '[]') AS services,
+              'duration_min', s.duration_min, 'buffer_min', s.buffer_min
+            ) ORDER BY s.name) FILTER (WHERE s.id IS NOT NULL), '[]') AS services,
             (SELECT round(avg(rating), 1) FROM reviews WHERE provider_id = p.id AND NOT hidden) AS avg_rating,
             (SELECT count(*) FROM reviews WHERE provider_id = p.id AND NOT hidden)              AS review_count
      FROM favorites f

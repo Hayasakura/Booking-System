@@ -29,8 +29,8 @@ export default function AdminLogin() {
   return (
     <div className="login-page">
       <form onSubmit={submit} className="login-card">
-        <h1>📅 BookIt Admin</h1>
-        <p className="muted">登录后管理服务商和预约。</p>
+        <h1>🏫 Campus Reserve</h1>
+        <p className="muted">登录后管理校园资源和预约。</p>
         <label>
           邮箱
           <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />

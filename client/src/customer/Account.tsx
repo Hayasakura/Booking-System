@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '../api';
-import { fmtDateTime, fmtTime, money, STATUS_LABELS } from '../format';
+import { fmtDateTime, fmtTime, STATUS_LABELS } from '../format';
 import type { Booking, Provider } from '../types';
 import { RatingBadge } from '../components/Stars';
 import { clearSession, useCustomer } from './auth';
@@ -76,7 +76,7 @@ export default function Account() {
         {bookings === null && <p className="muted">正在加载…</p>}
         {bookings !== null && upcoming.length === 0 && (
           <p className="muted">
-            还没有预约——<Link to="/">查找服务商</Link>开始预约吧。
+            还没有预约——<Link to="/">查找校园资源</Link>开始预约吧。
           </p>
         )}
         <div className="booking-list">
@@ -86,7 +86,7 @@ export default function Account() {
                 <div className="provider-avatar" style={{ background: b.color }}>{b.emoji}</div>
                 <div>
                   <h2>{b.provider_name}</h2>
-                  <p className="muted">{b.service_name} · {money(b.price_cents)}</p>
+                  <p className="muted">{b.service_name}</p>
                 </div>
                 <span className={`badge badge-${b.status}`}>{STATUS_LABELS[b.status]}</span>
               </div>

@@ -8,11 +8,8 @@ import { computeSlots } from '../services/slots.js';
 import { cancelBooking, createBooking, getBookingDetail, rescheduleBooking } from '../services/booking.js';
 import { submitReview } from '../services/reviews.js';
 import { wake } from '../services/notify/dispatcher.js';
-import { computeDiscount, validateCoupon } from '../services/coupons.js';
 import { joinWaitlist } from '../services/waitlist.js';
 import { cancelSeries, createSeries } from '../services/series.js';
-import { computeRefundCents, refundedSoFar } from '../services/refunds.js';
-import { paymentProvider } from '../services/payments/index.js';
 
 export const publicRouter = Router();
 
@@ -31,9 +28,9 @@ publicRouter.post('/auth/login', asyncHandler(async (req, res) => {
 
 // ---------------------------------------------------------------- catalog
 export const BUSINESS_TYPES = [
-  { key: 'doctor', label: '医生与诊所', emoji: '🩺', tagline: '问诊、复诊与医疗服务' },
-  { key: 'salon', label: '沙龙与护理', emoji: '💇', tagline: '剪发、染发、造型与个人护理' },
-  { key: 'turf', label: '运动场地', emoji: '⚽', tagline: '足球场、羽毛球场等运动场地' },
+  { key: 'study_room', label: '自习空间', emoji: '📚', tagline: '安静学习与专注办公空间' },
+  { key: 'meeting_room', label: '会议与活动室', emoji: '🏫', tagline: '小组讨论、社团活动与课程活动空间' },
+  { key: 'equipment', label: '实验室设备', emoji: '🧪', tagline: '实验、创作与课程设备预约' },
 ] as const;
 
 publicRouter.get('/business-types', (_req, res) => res.json(BUSINESS_TYPES));
@@ -44,14 +41,14 @@ publicRouter.get('/providers', asyncHandler(async (req, res) => {
   let where = 'p.active';
   if (type) {
     params.push(type);
-    where += ` AND p.business_type = $1`;
+    where += ` AND p.resource_type = $1`;
   }
   const { rows } = await pool.query(
     `SELECT p.*,
             COALESCE(json_agg(json_build_object(
               'id', s.id, 'name', s.name, 'description', s.description,
-              'duration_min', s.duration_min, 'buffer_min', s.buffer_min, 'price_cents', s.price_cents
-            ) ORDER BY s.price_cents) FILTER (WHERE s.id IS NOT NULL), '[]') AS services,
+              'duration_min', s.duration_min, 'buffer_min', s.buffer_min
+            ) ORDER BY s.name) FILTER (WHERE s.id IS NOT NULL), '[]') AS services,
             (SELECT round(avg(rating), 1) FROM reviews WHERE provider_id = p.id AND NOT hidden) AS avg_rating,
             (SELECT count(*) FROM reviews WHERE provider_id = p.id AND NOT hidden)              AS review_count
      FROM providers p
@@ -75,7 +72,7 @@ publicRouter.get('/providers/:id', asyncHandler(async (req, res) => {
   );
   if (!provider) return res.status(404).json({ error: 'Provider not found' });
   const [services, schedules] = await Promise.all([
-    pool.query('SELECT * FROM services WHERE provider_id = $1 AND active ORDER BY price_cents', [id]),
+    pool.query('SELECT * FROM services WHERE provider_id = $1 AND active ORDER BY name', [id]),
     pool.query('SELECT weekday, start_time, end_time FROM schedules WHERE provider_id = $1 ORDER BY weekday, start_time', [id]),
   ]);
   res.json({ ...provider, services: services.rows, schedules: schedules.rows });
@@ -121,30 +118,15 @@ const bookingSchema = z.object({
     phone: z.string().max(30).optional(),
   }),
   notes: z.string().max(1000).optional(),
-  couponCode: z.string().max(40).optional(),
-  redeemPoints: z.number().int().min(1).optional(),
 });
 
 publicRouter.post('/bookings', optionalCustomer, asyncHandler(async (req, res) => {
   const input = bookingSchema.parse(req.body);
-  if (input.redeemPoints && !req.customer) {
-    return res.status(401).json({ error: 'Sign in to redeem points' });
-  }
-  const { booking, payment } = await createBooking({ ...input, customerAuthId: req.customer?.sub });
+  const { booking } = await createBooking(input);
   const detail = await getBookingDetail('b.id = $1', [booking.id]);
   wake(); // confirmation email was queued in the booking txn — deliver it now
   res.status(201).json({
     ...detail,
-    payment: payment
-      ? {
-          required: true,
-          orderId: payment.order_id,
-          amountCents: payment.amount_cents,
-          currency: payment.currency,
-          expiresAt: booking.expires_at,
-          ...paymentProvider.checkoutPublicConfig(),
-        }
-      : null,
   });
 }));
 
@@ -195,26 +177,6 @@ publicRouter.post('/waitlist', asyncHandler(async (req, res) => {
   res.json(await joinWaitlist(input));
 }));
 
-// read-only coupon check for the booking form; the authoritative validation
-// (FOR UPDATE + atomic increment) happens inside the booking transaction
-publicRouter.post('/coupons/validate', asyncHandler(async (req, res) => {
-  const { code, serviceId } = z.object({
-    code: z.string().min(1).max(40),
-    serviceId: z.number().int(),
-  }).parse(req.body);
-  const { rows: [service] } = await pool.query('SELECT * FROM services WHERE id = $1 AND active', [serviceId]);
-  if (!service) return res.status(404).json({ error: 'Service not found' });
-  const { rows: [coupon] } = await pool.query('SELECT * FROM coupons WHERE code = upper($1)', [code.trim()]);
-  const problem = validateCoupon(coupon, service.price_cents);
-  if (problem) return res.json({ valid: false, reason: problem });
-  const discountCents = computeDiscount(coupon, service.price_cents);
-  const net = service.price_cents - discountCents;
-  let dueNowCents = 0;
-  if (service.payment_policy === 'full') dueNowCents = net;
-  else if (service.payment_policy === 'deposit') dueNowCents = Math.max(Math.ceil((net * service.deposit_pct) / 100), 100);
-  res.json({ valid: true, code: coupon.code, discountCents, finalPriceCents: net, dueNowCents });
-}));
-
 publicRouter.get('/bookings/lookup', asyncHandler(async (req, res) => {
   const { code, email } = z
     .object({ code: z.string().min(4), email: z.string().email() })
@@ -233,59 +195,18 @@ publicRouter.post('/bookings/:code/cancel', asyncHandler(async (req, res) => {
     'upper(b.code) = upper($1) AND c.email = lower($2)', [code.trim(), email.trim()]
   );
   if (!detail) return res.status(404).json({ error: 'No booking found for that code and email' });
-  if (detail.status !== 'confirmed' && detail.status !== 'pending_payment') {
+  if (detail.status !== 'confirmed') {
     return res.status(400).json({ error: `This booking is already ${detail.status}` });
   }
   if (new Date(detail.starts_at) < new Date()) {
     return res.status(400).json({ error: 'Past bookings cannot be cancelled' });
   }
-  const { refund } = await cancelBooking(detail.id, 'customer', {
+  await cancelBooking(detail.id, 'customer', {
     cancelledBy: 'you',
     reason: 'Cancelled via manage page',
   });
   wake();
-  res.json({ ...detail, status: 'cancelled', refund });
-}));
-
-// "You will be refunded ₹X" preview for the cancel confirmation dialog
-publicRouter.get('/bookings/:code/refund-preview', asyncHandler(async (req, res) => {
-  const code = z.string().parse(req.params.code);
-  const { email } = z.object({ email: z.string().email() }).parse(req.query);
-  const detail = await getBookingDetail(
-    'upper(b.code) = upper($1) AND c.email = lower($2)', [code.trim(), email.trim()]
-  );
-  if (!detail) return res.status(404).json({ error: 'No booking found for that code and email' });
-  const { rows: [payment] } = await pool.query(
-    `SELECT * FROM payments WHERE booking_id = $1 AND status IN ('captured', 'partially_refunded')`,
-    [detail.id]
-  );
-  if (!payment) return res.json({ paid: false, refund: null });
-  const refundable = payment.amount_cents - (await refundedSoFar(payment.id));
-  const { refundCents, policy } = computeRefundCents(Math.max(refundable, 0), new Date(detail.starts_at));
-  res.json({ paid: true, refund: { amountCents: refundCents, policy, paidCents: payment.amount_cents } });
-}));
-
-// data for the printable receipt page (same code+email auth as lookup)
-publicRouter.get('/bookings/:code/receipt', asyncHandler(async (req, res) => {
-  const code = z.string().parse(req.params.code);
-  const { email } = z.object({ email: z.string().email() }).parse(req.query);
-  const detail = await getBookingDetail(
-    'upper(b.code) = upper($1) AND c.email = lower($2)', [code.trim(), email.trim()]
-  );
-  if (!detail) return res.status(404).json({ error: 'No booking found for that code and email' });
-  const { rows: payments } = await pool.query(
-    `SELECT p.*,
-            COALESCE(json_agg(json_build_object(
-              'id', r.id, 'amount_cents', r.amount_cents, 'reason', r.reason,
-              'status', r.status, 'created_at', r.created_at
-            ) ORDER BY r.created_at) FILTER (WHERE r.id IS NOT NULL), '[]') AS refunds
-     FROM payments p
-     LEFT JOIN refunds r ON r.payment_id = p.id
-     WHERE p.booking_id = $1
-     GROUP BY p.id ORDER BY p.created_at`,
-    [detail.id]
-  );
-  res.json({ ...detail, payments });
+  res.json({ ...detail, status: 'cancelled' });
 }));
 
 publicRouter.post('/bookings/:code/review', asyncHandler(async (req, res) => {

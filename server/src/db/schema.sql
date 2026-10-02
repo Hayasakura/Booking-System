@@ -28,10 +28,10 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- ----------------------------------------------------------------- providers
--- A provider is a bookable resource: a doctor, a stylist, or a turf/court.
+-- A provider is a bookable campus resource.
 CREATE TABLE IF NOT EXISTS providers (
   id                   SERIAL PRIMARY KEY,
-  business_type        TEXT NOT NULL CHECK (business_type IN ('doctor', 'salon', 'turf')),
+  resource_type        TEXT NOT NULL CHECK (resource_type IN ('study_room', 'meeting_room', 'equipment')),
   name                 TEXT NOT NULL,
   title                TEXT NOT NULL DEFAULT '',        -- e.g. "Cardiologist", "Senior Stylist", "5-a-side football"
   bio                  TEXT NOT NULL DEFAULT '',
@@ -54,15 +54,10 @@ CREATE TABLE IF NOT EXISTS services (
   description    TEXT NOT NULL DEFAULT '',
   duration_min   INT NOT NULL CHECK (duration_min BETWEEN 5 AND 480),
   buffer_min     INT NOT NULL DEFAULT 0 CHECK (buffer_min BETWEEN 0 AND 120),  -- prep/cleanup gap enforced around bookings
-  price_cents    INT NOT NULL DEFAULT 0 CHECK (price_cents >= 0),
-  payment_policy TEXT NOT NULL DEFAULT 'none' CHECK (payment_policy IN ('none', 'deposit', 'full')),
-  deposit_pct    INT NOT NULL DEFAULT 50 CHECK (deposit_pct BETWEEN 1 AND 100),
   active         BOOLEAN NOT NULL DEFAULT TRUE,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_services_provider ON services(provider_id);
-ALTER TABLE services ADD COLUMN IF NOT EXISTS payment_policy TEXT NOT NULL DEFAULT 'none' CHECK (payment_policy IN ('none', 'deposit', 'full'));
-ALTER TABLE services ADD COLUMN IF NOT EXISTS deposit_pct INT NOT NULL DEFAULT 50 CHECK (deposit_pct BETWEEN 1 AND 100);
 
 -- ------------------------------------------------- weekly recurring schedule
 -- Working windows per weekday (0 = Sunday .. 6 = Saturday). A provider may
@@ -129,13 +124,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   starts_at    TIMESTAMPTZ NOT NULL,
   ends_at      TIMESTAMPTZ NOT NULL,
   status       TEXT NOT NULL DEFAULT 'confirmed'
-               CHECK (status IN ('pending_payment', 'confirmed', 'completed', 'cancelled', 'no_show')),
-  price_cents  INT NOT NULL DEFAULT 0,                  -- snapshot of the service price at booking time
-  discount_cents   INT NOT NULL DEFAULT 0 CHECK (discount_cents >= 0), -- coupon + redeemed points
-  coupon_code      TEXT,                                -- snapshot of the applied coupon
-  points_redeemed  INT NOT NULL DEFAULT 0 CHECK (points_redeemed >= 0),
-  amount_due_cents INT NOT NULL DEFAULT 0,              -- online amount at booking time
-  expires_at   TIMESTAMPTZ,                             -- payment hold deadline (pending_payment only)
+               CHECK (status IN ('confirmed', 'completed', 'cancelled', 'no_show')),
   notes        TEXT NOT NULL DEFAULT '',
   cancel_token UUID NOT NULL DEFAULT gen_random_uuid(),
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -144,54 +133,18 @@ CREATE TABLE IF NOT EXISTS bookings (
 
   -- THE conflict-prevention constraint. Two bookings for the same provider
   -- whose [starts_at, ends_at) ranges overlap cannot both be active.
-  -- pending_payment HOLDS the slot while the customer pays; cancelled /
-  -- no-show bookings are excluded so their slots free up.
+  -- cancelled and no-show bookings are excluded so their slots are released.
   CONSTRAINT bookings_no_overlap EXCLUDE USING gist (
     provider_id WITH =,
     tstzrange(starts_at, ends_at) WITH &&
-  ) WHERE (status IN ('pending_payment', 'confirmed', 'completed'))
+  ) WHERE (status IN ('confirmed', 'completed'))
 );
 CREATE INDEX IF NOT EXISTS idx_bookings_provider_time ON bookings(provider_id, starts_at);
 CREATE INDEX IF NOT EXISTS idx_bookings_customer ON bookings(customer_id);
 CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
-
--- upgrade path for existing databases (schema.sql is replayed idempotently)
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS discount_cents INT NOT NULL DEFAULT 0 CHECK (discount_cents >= 0);
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS coupon_code TEXT;
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS points_redeemed INT NOT NULL DEFAULT 0 CHECK (points_redeemed >= 0);
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS amount_due_cents INT NOT NULL DEFAULT 0;
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
-CREATE INDEX IF NOT EXISTS idx_bookings_pending_expiry ON bookings(expires_at) WHERE status = 'pending_payment';
-
--- widen the status CHECK to include pending_payment (drop + re-add only when stale)
-DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM pg_constraint
-             WHERE conrelid = 'bookings'::regclass AND conname = 'bookings_status_check'
-               AND pg_get_constraintdef(oid) NOT LIKE '%pending_payment%') THEN
-    ALTER TABLE bookings DROP CONSTRAINT bookings_status_check;
-    ALTER TABLE bookings ADD CONSTRAINT bookings_status_check
-      CHECK (status IN ('pending_payment', 'confirmed', 'completed', 'cancelled', 'no_show'));
-  END IF;
-END $$;
-
--- CRITICAL: pending_payment must occupy the slot. Rebuild the exclusion
--- constraint only when its WHERE clause is the old one (avoids a GiST
--- rebuild on every migrate run). slots.ts must use the same status list.
-DO $$ BEGIN
-  IF EXISTS (SELECT 1 FROM pg_constraint
-             WHERE conrelid = 'bookings'::regclass AND conname = 'bookings_no_overlap'
-               AND pg_get_constraintdef(oid) NOT LIKE '%pending_payment%') THEN
-    ALTER TABLE bookings DROP CONSTRAINT bookings_no_overlap;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint
-                 WHERE conrelid = 'bookings'::regclass AND conname = 'bookings_no_overlap') THEN
-    ALTER TABLE bookings ADD CONSTRAINT bookings_no_overlap EXCLUDE USING gist (
-      provider_id WITH =,
-      tstzrange(starts_at, ends_at) WITH &&
-    ) WHERE (status IN ('pending_payment', 'confirmed', 'completed'));
-  END IF;
-END $$;
-
+/* Legacy payment, refund, coupon and loyalty definitions were removed.
+   The migration below drops these objects from existing databases. */
+/*
 -- ------------------------------------------------------------------ payments
 CREATE TABLE IF NOT EXISTS payments (
   id           SERIAL PRIMARY KEY,
@@ -259,6 +212,7 @@ CREATE INDEX IF NOT EXISTS idx_loyalty_customer ON loyalty_ledger(customer_id);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_loyalty_booking_reason
   ON loyalty_ledger(booking_id, reason) WHERE booking_id IS NOT NULL;
 
+*/
 -- ------------------------------------------------------------ booking series
 -- A weekly/biweekly run of bookings. Occurrences are ordinary bookings rows
 -- (constraint, reminders, cancellation all work untouched) linked by series_id.
@@ -328,7 +282,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   waitlist_id     INT,                        -- FK attached next to the waitlist table
   channel         TEXT NOT NULL DEFAULT 'email' CHECK (channel IN ('email', 'sms', 'whatsapp')),
   template        TEXT NOT NULL CHECK (template IN
-                    ('confirmation', 'cancellation', 'rescheduled', 'receipt',
+                    ('confirmation', 'cancellation', 'rescheduled',
                      'reminder_24h', 'reminder_1h', 'waitlist_slot_open',
                      'series_summary', 'series_cancelled')),
   recipient       TEXT NOT NULL,
@@ -365,3 +319,136 @@ CREATE TABLE IF NOT EXISTS booking_events (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_booking_events_booking ON booking_events(booking_id);
+
+-- ------------------------------------------------------------------ campus migration
+-- The original demo used doctors, payments, coupons and loyalty points. The
+-- product is now a campus resource reservation platform. Keep this migration
+-- idempotent so existing local databases move to the new model safely.
+ALTER TABLE providers ADD COLUMN IF NOT EXISTS resource_type TEXT;
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_name = 'providers' AND column_name = 'business_type') THEN
+    UPDATE providers
+    SET resource_type = CASE business_type
+      WHEN 'doctor' THEN 'study_room'
+      WHEN 'salon' THEN 'meeting_room'
+      WHEN 'turf' THEN 'equipment'
+      ELSE 'study_room'
+    END
+    WHERE resource_type IS NULL;
+  END IF;
+END $$;
+
+-- Migrate the bundled demo catalog without touching user-created resources.
+UPDATE providers SET name = '静心自习室 A', title = '安静学习空间',
+  bio = '适合个人学习、考研备考和专注办公，提供稳定网络、插座与自然采光。'
+WHERE name = 'Asha Rao 医生';
+UPDATE providers SET name = '图书馆研习室 B', title = '小组研习空间',
+  bio = '靠近图书馆与教学楼，适合课程讨论、论文写作和安静自习。'
+WHERE name = 'Kabir Mehta 医生';
+UPDATE providers SET name = '创新会议室 1', title = '小组会议与路演空间',
+  bio = '配备投影、白板和可移动桌椅，适合课程展示、社团会议和项目路演。'
+WHERE name = 'Meera @ Glow 美发工作室';
+UPDATE providers SET name = '社团活动室 2', title = '社团活动与面试空间',
+  bio = '适合学生组织活动、招聘面试和小型工作坊，支持灵活布置。'
+WHERE name = 'Arjun @ FadeLab 理发店';
+UPDATE providers SET name = '电子实验室', title = '电子与嵌入式设备',
+  bio = '提供示波器、万用表和开发板，适合课程实验与学生项目开发。'
+WHERE name = 'GreenKick 体育馆 — 场地 1';
+UPDATE providers SET name = '摄影与创作设备室', title = '影像与内容创作设备',
+  bio = '提供相机、灯光和录音设备，适合课程作业、校园活动记录与作品创作。'
+WHERE name = 'SmashPoint — 羽毛球场 2';
+UPDATE services s SET name = CASE s.name
+    WHEN '初诊咨询' THEN '单人学习座位'
+    WHEN '复诊' THEN '小组学习桌'
+    WHEN '心脏超声筛查' THEN '专注学习时段'
+  END,
+  description = CASE s.name
+    WHEN '初诊咨询' THEN '独立座位、插座与高速网络'
+    WHEN '复诊' THEN '适合 2—4 人协作学习'
+    WHEN '心脏超声筛查' THEN '连续 3 小时安静学习空间'
+  END
+FROM providers p WHERE s.provider_id = p.id AND p.name = '静心自习室 A'
+  AND s.name IN ('初诊咨询', '复诊', '心脏超声筛查');
+UPDATE services s SET name = CASE s.name
+    WHEN '问诊' THEN '单人研习位'
+    WHEN '化学换肤' THEN '小组研讨桌'
+    WHEN '痣 / 皮赘去除' THEN '论文冲刺时段'
+  END,
+  description = CASE s.name
+    WHEN '问诊' THEN '带台灯与储物柜的学习座位'
+    WHEN '化学换肤' THEN '白板与投屏设备齐全'
+    WHEN '痣 / 皮赘去除' THEN '适合集中完成课程任务'
+  END
+FROM providers p WHERE s.provider_id = p.id AND p.name = '图书馆研习室 B'
+  AND s.name IN ('问诊', '化学换肤', '痣 / 皮赘去除');
+UPDATE services s SET name = CASE s.name
+    WHEN '剪发与吹风造型' THEN '课程项目讨论'
+    WHEN '全头染发' THEN '社团例会'
+    WHEN '新娘妆试妆' THEN '项目路演彩排'
+    WHEN '快速修剪' THEN '面试模拟间'
+  END,
+  description = CASE s.name
+    WHEN '剪发与吹风造型' THEN '投影、白板与 8 人座位'
+    WHEN '全头染发' THEN '可移动桌椅与会议屏幕'
+    WHEN '新娘妆试妆' THEN '大屏、音响与演示空间'
+    WHEN '快速修剪' THEN '适合模拟面试与小型答辩'
+  END
+FROM providers p WHERE s.provider_id = p.id AND p.name = '创新会议室 1'
+  AND s.name IN ('剪发与吹风造型', '全头染发', '新娘妆试妆', '快速修剪');
+UPDATE services s SET name = CASE s.name
+    WHEN '净肤渐变 + 胡须' THEN '招聘面试'
+    WHEN '经典理发' THEN '社团工作坊'
+    WHEN '热毛巾剃须' THEN '学生组织活动'
+  END
+FROM providers p WHERE s.provider_id = p.id AND p.name = '社团活动室 2'
+  AND s.name IN ('净肤渐变 + 胡须', '经典理发', '热毛巾剃须');
+UPDATE services s SET name = CASE s.name
+    WHEN '1 小时场地' THEN '基础实验台'
+    WHEN '1.5 小时场地' THEN '开发板套装'
+    WHEN '2 小时场地' THEN '团队实验时段'
+  END
+FROM providers p WHERE s.provider_id = p.id AND p.name = '电子实验室'
+  AND s.name IN ('1 小时场地', '1.5 小时场地', '2 小时场地');
+UPDATE services s SET name = CASE s.name
+    WHEN '1 小时球场预约' THEN '相机与灯光套装'
+    WHEN '2 小时球场预约' THEN '视频拍摄套装'
+  END
+FROM providers p WHERE s.provider_id = p.id AND p.name = '摄影与创作设备室'
+  AND s.name IN ('1 小时球场预约', '2 小时球场预约');
+ALTER TABLE providers DROP COLUMN IF EXISTS business_type;
+ALTER TABLE providers ALTER COLUMN resource_type SET DEFAULT 'study_room';
+ALTER TABLE providers ALTER COLUMN resource_type SET NOT NULL;
+DO $$ BEGIN
+  ALTER TABLE providers ADD CONSTRAINT providers_resource_type_check
+    CHECK (resource_type IN ('study_room', 'meeting_room', 'equipment'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+DROP TABLE IF EXISTS refunds, payments, coupons, loyalty_ledger CASCADE;
+ALTER TABLE services DROP COLUMN IF EXISTS price_cents;
+ALTER TABLE bookings DROP COLUMN IF EXISTS price_cents;
+ALTER TABLE services DROP COLUMN IF EXISTS payment_policy;
+ALTER TABLE services DROP COLUMN IF EXISTS deposit_pct;
+ALTER TABLE bookings DROP COLUMN IF EXISTS discount_cents;
+ALTER TABLE bookings DROP COLUMN IF EXISTS coupon_code;
+ALTER TABLE bookings DROP COLUMN IF EXISTS points_redeemed;
+ALTER TABLE bookings DROP COLUMN IF EXISTS amount_due_cents;
+ALTER TABLE bookings DROP COLUMN IF EXISTS expires_at;
+DROP INDEX IF EXISTS idx_bookings_pending_expiry;
+
+UPDATE bookings SET status = 'confirmed' WHERE status = 'pending_payment';
+ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_status_check;
+ALTER TABLE bookings ADD CONSTRAINT bookings_status_check
+  CHECK (status IN ('confirmed', 'completed', 'cancelled', 'no_show'));
+ALTER TABLE bookings DROP CONSTRAINT IF EXISTS bookings_no_overlap;
+ALTER TABLE bookings ADD CONSTRAINT bookings_no_overlap EXCLUDE USING gist (
+  provider_id WITH =,
+  tstzrange(starts_at, ends_at) WITH &&
+) WHERE (status IN ('confirmed', 'completed'));
+
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_template_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_template_check
+  CHECK (template IN ('confirmation', 'cancellation', 'rescheduled',
+    'reminder_24h', 'reminder_1h', 'waitlist_slot_open', 'series_summary',
+    'series_cancelled'));

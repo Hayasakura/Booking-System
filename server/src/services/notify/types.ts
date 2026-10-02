@@ -2,7 +2,6 @@ export type Template =
   | 'confirmation'
   | 'cancellation'
   | 'rescheduled'
-  | 'receipt'
   | 'reminder_24h'
   | 'reminder_1h'
   | 'waitlist_slot_open'

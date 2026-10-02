@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api';
-import { money } from '../format';
 import type { Provider } from '../types';
 import { RatingBadge } from '../components/Stars';
 import { useFavorites } from '../customer/favorites';
 
 const TYPE_LABELS: Record<string, string> = {
-  doctor: '医生与诊所',
-  salon: '沙龙与护理',
-  turf: '运动场地',
+  study_room: '自习空间',
+  meeting_room: '会议与活动室',
+  equipment: '实验室设备',
 };
 
 export default function Providers() {
@@ -17,12 +16,15 @@ export default function Providers() {
   const [providers, setProviders] = useState<Provider[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const fav = useFavorites();
 
   useEffect(() => {
     setLoading(true);
+    setError('');
     api.get<Provider[]>(`/api/providers?type=${type}`)
       .then(setProviders)
+      .catch((err) => setError(err instanceof Error ? err.message : '资源加载失败'))
       .finally(() => setLoading(false));
   }, [type]);
 
@@ -35,7 +37,7 @@ export default function Providers() {
   return (
     <div className="container">
       <div className="page-head">
-        <h1>{TYPE_LABELS[type ?? ''] ?? '服务商'}</h1>
+        <h1>{TYPE_LABELS[type ?? ''] ?? '校园资源'}</h1>
         <input
           className="input search-input"
           placeholder="按名称或专业搜索…"
@@ -44,8 +46,9 @@ export default function Providers() {
         />
       </div>
 
-      {loading && <p className="muted">正在加载服务商…</p>}
-      {!loading && filtered.length === 0 && <p className="muted">未找到服务商。</p>}
+      {loading && <div className="loading-state"><span className="spinner" />正在加载校园资源…</div>}
+      {error && !loading && <div className="error-box">{error} <button className="btn btn-ghost btn-sm" onClick={() => window.location.reload()}>重试</button></div>}
+      {!loading && !error && filtered.length === 0 && <div className="empty-state"><strong>暂时没有匹配的资源</strong><span>可以换个关键词，或浏览其他资源类型。</span></div>}
 
       <div className="provider-grid">
         {filtered.map((p) => (
@@ -70,7 +73,7 @@ export default function Providers() {
               <div className="chip-row">
                 {(p.services ?? []).slice(0, 3).map((s) => (
                   <span key={s.id} className="chip">
-                    {s.name} · {money(s.price_cents)}
+                    {s.name}
                   </span>
                 ))}
                 {(p.services?.length ?? 0) > 3 && (

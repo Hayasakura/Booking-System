@@ -14,12 +14,10 @@ analyticsRouter.get('/analytics', asyncHandler(async (req, res) => {
   }).parse(req.query);
 
   const [timeseries, heatmap, services, statusRates, customers] = await Promise.all([
-    // gap-filled daily bookings / net revenue / cancellations
+    // gap-filled daily bookings / cancellations
     pool.query(
       `SELECT d::date AS day,
               count(b.id) FILTER (WHERE b.status IN ('confirmed','completed'))::int AS bookings,
-              coalesce(sum(b.price_cents - b.discount_cents)
-                       FILTER (WHERE b.status IN ('confirmed','completed')), 0)::int AS revenue_cents,
               count(b.id) FILTER (WHERE b.status = 'cancelled')::int AS cancelled
        FROM generate_series(current_date - ($1::int - 1), current_date, interval '1 day') d
        LEFT JOIN bookings b ON b.starts_at::date = d::date
@@ -39,15 +37,14 @@ analyticsRouter.get('/analytics', asyncHandler(async (req, res) => {
     // per-service performance
     pool.query(
       `SELECT s.id, s.name, p.name AS provider_name, p.color, p.emoji,
-              count(b.id)::int AS bookings,
-              coalesce(sum(b.price_cents - b.discount_cents), 0)::int AS revenue_cents
+              count(b.id)::int AS bookings
        FROM services s
        JOIN providers p ON p.id = s.provider_id
        LEFT JOIN bookings b ON b.service_id = s.id
          AND b.status IN ('confirmed','completed') AND b.starts_at >= current_date - $1::int
        GROUP BY s.id, p.name, p.color, p.emoji
        HAVING count(b.id) > 0
-       ORDER BY revenue_cents DESC
+       ORDER BY bookings DESC
        LIMIT 12`,
       [days]
     ),

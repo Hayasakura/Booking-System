@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api';
-import { fmtDateTime, money, STATUS_LABELS } from '../format';
+import { fmtDateTime, STATUS_LABELS } from '../format';
 import type { AdminStats, Booking } from '../types';
 import { BarChart, Heatmap, HBarList } from './charts';
 
 interface Analytics {
   days: number;
-  timeseries: { day: string; bookings: number; revenue_cents: number; cancelled: number }[];
+  timeseries: { day: string; bookings: number; cancelled: number }[];
   heatmap: { dow: number; hour: number; count: number }[];
-  services: { id: number; name: string; provider_name: string; color: string; emoji: string; bookings: number; revenue_cents: number }[];
+  services: { id: number; name: string; provider_name: string; color: string; emoji: string; bookings: number }[];
   statusRates: { status: string; count: number }[];
   customers: { new_bookings: number; returning_bookings: number; new_customers: number };
 }
@@ -18,9 +18,6 @@ const dayTick = (iso: string) =>
   new Date(iso).toLocaleDateString('zh-CN', { day: 'numeric', month: 'short' });
 const dayFull = (iso: string) =>
   new Date(iso).toLocaleDateString('zh-CN', { weekday: 'short', day: 'numeric', month: 'short' });
-const compactMoney = (v: number) =>
-  v >= 100000_00 ? `₹${(v / 100000_00).toFixed(1)}L` : v >= 1000_00 ? `₹${Math.round(v / 1000_00)}k` : `₹${Math.round(v / 100)}`;
-
 export default function Dashboard() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [recent, setRecent] = useState<Booking[]>([]);
@@ -45,12 +42,10 @@ export default function Dashboard() {
   const cards = [
     { label: '今日预约', value: stats.today_confirmed, icon: '📅' },
     { label: '未来 7 天', value: stats.next7_confirmed, icon: '🗓️' },
-    { label: '本月预约金额', value: money(Number(stats.month_revenue_cents)), icon: '💰' },
-    { label: '本月线上收款', value: money(Number(stats.month_collected_cents ?? 0)), icon: '💳' },
-    { label: '本月退款', value: money(Number(stats.month_refunded_cents ?? 0)), icon: '↩️' },
+    { label: '本月预约数', value: stats.byProvider.reduce((sum, p) => sum + Number(p.month_bookings), 0), icon: '📌' },
     { label: '取消率（30天）', value: `${cancelRate}%`, icon: '📉' },
-    { label: '启用的服务商', value: stats.active_providers, icon: '👥' },
-    { label: '客户数', value: stats.customers, icon: '🙋' },
+    { label: '启用的资源', value: stats.active_providers, icon: '🏫' },
+    { label: '使用人数', value: stats.customers, icon: '🙋' },
   ];
 
   return (
@@ -93,12 +88,12 @@ export default function Dashboard() {
               />
             </section>
             <section className="panel">
-              <h2>每日净收入</h2>
+              <h2>每日取消数</h2>
               <BarChart
-                color="var(--chart-revenue)"
-                valueFmt={compactMoney}
+                color="var(--chart-danger)"
+                valueFmt={(v) => String(Math.round(v))}
                 data={analytics.timeseries.map((t) => ({
-                  label: dayTick(t.day), tooltip: dayFull(t.day), value: t.revenue_cents,
+                  label: dayTick(t.day), tooltip: dayFull(t.day), value: t.cancelled,
                 }))}
               />
             </section>
@@ -111,15 +106,15 @@ export default function Dashboard() {
 
           <div className="dash-cols">
             <section className="panel">
-              <h2>收入最高的服务</h2>
+              <h2>使用率最高的预约项目</h2>
               {analytics.services.length === 0 && <p className="muted">此时间范围内没有预约。</p>}
               <HBarList
-                valueFmt={(v) => money(v)}
+                valueFmt={(v) => `${Math.round(v)} 次`}
                 items={analytics.services.map((s) => ({
                   label: s.name,
                   sub: `${s.emoji} ${s.provider_name} · ${s.bookings}×`,
                   dotColor: s.color,
-                  value: s.revenue_cents,
+                  value: s.bookings,
                 }))}
               />
             </section>
@@ -166,9 +161,9 @@ export default function Dashboard() {
 
       <div className="dash-cols">
         <section className="panel">
-          <h2>服务商——即将到来的预约</h2>
+          <h2>资源——即将到来的预约</h2>
           <table className="table">
-            <thead><tr><th>服务商</th><th>即将到来</th><th>收入（本月）</th></tr></thead>
+            <thead><tr><th>资源</th><th>即将到来</th><th>预约数（本月）</th></tr></thead>
             <tbody>
               {stats.byProvider.map((p) => (
                 <tr key={p.id}>
@@ -179,7 +174,7 @@ export default function Dashboard() {
                     </Link>
                   </td>
                   <td>{p.upcoming}</td>
-                  <td>{money(Number(p.month_revenue_cents))}</td>
+                  <td>{p.month_bookings}</td>
                 </tr>
               ))}
             </tbody>

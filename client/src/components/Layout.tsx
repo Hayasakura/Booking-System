@@ -9,12 +9,12 @@ export default function Layout() {
       <header className="site-header">
         <div className="container header-row">
           <Link to="/" className="brand">
-            <span className="brand-mark">📅</span> Book<span className="brand-accent">It</span>
+            <span className="brand-mark">🏫</span> Campus<span className="brand-accent">Reserve</span>
           </Link>
           <nav className="site-nav">
-            <NavLink to="/browse/doctor">医生</NavLink>
-            <NavLink to="/browse/salon">沙龙</NavLink>
-            <NavLink to="/browse/turf">场地</NavLink>
+            <NavLink to="/browse/study_room">自习空间</NavLink>
+            <NavLink to="/browse/meeting_room">会议室</NavLink>
+            <NavLink to="/browse/equipment">设备</NavLink>
             <NavLink to="/manage" className="nav-pill">管理预约</NavLink>
             {user ? (
               <NavLink to="/account" className="nav-pill">👤 {user.name.split(' ')[0]}</NavLink>
@@ -30,7 +30,7 @@ export default function Layout() {
       </main>
       <footer className="site-footer">
         <div className="container footer-row">
-          <span>BookIt — 预约管理系统</span>
+          <span>Campus Reserve — 校园资源预约平台</span>
           <Link to="/admin">管理后台 →</Link>
         </div>
       </footer>

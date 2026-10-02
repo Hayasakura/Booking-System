@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import type { Provider } from '../types';
 
-const TYPE_LABELS: Record<string, string> = { doctor: '医生', salon: '沙龙', turf: '运动场地' };
+const TYPE_LABELS: Record<string, string> = { study_room: '自习空间', meeting_room: '会议与活动室', equipment: '实验室设备' };
 
 export default function AdminProviders() {
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -15,8 +15,8 @@ export default function AdminProviders() {
 
   async function create() {
     const created = await api.post<Provider>('/api/admin/providers', {
-      business_type: 'doctor',
-      name: '新服务商',
+      resource_type: 'study_room',
+      name: '新校园资源',
       title: '',
       bio: '',
     });
@@ -26,12 +26,12 @@ export default function AdminProviders() {
   return (
     <div>
       <div className="admin-title-row">
-        <h1 className="admin-title">服务商</h1>
-        <button className="btn btn-primary" onClick={create}>+ 新建服务商</button>
+        <h1 className="admin-title">校园资源</h1>
+        <button className="btn btn-primary" onClick={create}>+ 新建资源</button>
       </div>
       <div className="panel">
         <table className="table">
-          <thead><tr><th>服务商</th><th>类型</th><th>服务数</th><th>时间间隔</th><th>状态</th><th></th></tr></thead>
+          <thead><tr><th>资源</th><th>类型</th><th>项目数</th><th>时间间隔</th><th>状态</th><th></th></tr></thead>
           <tbody>
             {providers.map((p) => (
               <tr key={p.id}>
@@ -44,7 +44,7 @@ export default function AdminProviders() {
                     </div>
                   </div>
                 </td>
-                <td>{TYPE_LABELS[p.business_type]}</td>
+                <td>{TYPE_LABELS[p.resource_type]}</td>
                 <td>{p.service_count}</td>
                 <td>{p.slot_step_min} 分钟</td>
                 <td>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, downloadFile } from '../api';
-import { fmtDateTime, fmtTime, money, STATUS_LABELS } from '../format';
+import { fmtDateTime, fmtTime, STATUS_LABELS } from '../format';
 import type { Booking, Provider } from '../types';
 
 export default function AdminBookings() {
@@ -91,7 +91,7 @@ export default function AdminBookings() {
       <div className="panel">
         <table className="table">
           <thead>
-            <tr><th>预约码</th><th>客户</th><th>服务商 / 服务</th><th>时间</th><th>价格</th><th>状态</th><th></th></tr>
+            <tr><th>预约码</th><th>用户</th><th>资源 / 项目</th><th>时间</th><th>状态</th><th></th></tr>
           </thead>
           <tbody>
             {bookings.map((b) => (
@@ -109,7 +109,6 @@ export default function AdminBookings() {
                   <div className="muted small">{b.service_name}</div>
                 </td>
                 <td>{fmtDateTime(b.starts_at)}<div className="muted small">结束于 {fmtTime(b.ends_at)}</div></td>
-                <td>{money(b.price_cents)}</td>
                 <td><span className={`badge badge-${b.status}`}>{STATUS_LABELS[b.status]}</span></td>
                 <td className="row-actions">
                   {b.status === 'confirmed' && (
@@ -118,9 +117,6 @@ export default function AdminBookings() {
                       <button className="btn btn-sm btn-ghost" title="爽约" onClick={() => setStatus(b, 'no_show')}>👻</button>
                       <button className="btn btn-sm btn-danger-ghost" title="取消" onClick={() => setStatus(b, 'cancelled')}>✕</button>
                     </>
-                  )}
-                  {b.status === 'pending_payment' && (
-                    <button className="btn btn-sm btn-danger-ghost" title="取消未付款保留" onClick={() => setStatus(b, 'cancelled')}>✕</button>
                   )}
                 </td>
               </tr>

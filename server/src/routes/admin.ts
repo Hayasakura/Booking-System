@@ -5,8 +5,6 @@ import { asyncHandler } from '../middleware/errors.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { cancelBooking, getBookingDetail } from '../services/booking.js';
 import { wake } from '../services/notify/dispatcher.js';
-import { executeRefund, refundedSoFar } from '../services/refunds.js';
-import { earnForCompletion } from '../services/loyalty.js';
 
 import { analyticsRouter } from './adminAnalytics.js';
 import { adminCustomersRouter } from './adminCustomers.js';
@@ -22,9 +20,6 @@ adminRouter.get('/stats', asyncHandler(async (_req, res) => {
     SELECT
       (SELECT count(*) FROM bookings WHERE starts_at::date = current_date AND status = 'confirmed')                    AS today_confirmed,
       (SELECT count(*) FROM bookings WHERE starts_at >= now() AND starts_at < now() + interval '7 days' AND status = 'confirmed') AS next7_confirmed,
-      (SELECT coalesce(sum(price_cents - discount_cents), 0) FROM bookings WHERE status IN ('confirmed','completed') AND starts_at >= date_trunc('month', now())) AS month_revenue_cents,
-      (SELECT coalesce(sum(p.amount_cents), 0) FROM payments p WHERE p.status IN ('captured','partially_refunded','refunded') AND p.updated_at >= date_trunc('month', now())) AS month_collected_cents,
-      (SELECT coalesce(sum(r.amount_cents), 0) FROM refunds r WHERE r.status <> 'failed' AND r.created_at >= date_trunc('month', now())) AS month_refunded_cents,
       (SELECT count(*) FROM bookings WHERE status = 'cancelled' AND created_at >= now() - interval '30 days')          AS cancelled_30d,
       (SELECT count(*) FROM bookings WHERE created_at >= now() - interval '30 days')                                   AS created_30d,
       (SELECT count(*) FROM providers WHERE active)                                                                    AS active_providers,
@@ -33,8 +28,8 @@ adminRouter.get('/stats', asyncHandler(async (_req, res) => {
   const { rows: byProvider } = await pool.query(`
     SELECT p.id, p.name, p.emoji, p.color,
            count(b.id) FILTER (WHERE b.status = 'confirmed' AND b.starts_at >= now()) AS upcoming,
-           coalesce(sum(b.price_cents - b.discount_cents) FILTER (WHERE b.status IN ('confirmed','completed')
-                    AND b.starts_at >= date_trunc('month', now())), 0) AS month_revenue_cents
+           count(b.id) FILTER (WHERE b.status IN ('confirmed','completed')
+                    AND b.starts_at >= date_trunc('month', now())) AS month_bookings
     FROM providers p
     LEFT JOIN bookings b ON b.provider_id = p.id
     WHERE p.active
@@ -67,7 +62,7 @@ function buildBookingFilter(q: z.infer<typeof bookingFilterSchema>) {
 
 const BOOKING_LIST_SELECT = `
   SELECT b.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
-         s.name AS service_name, p.name AS provider_name, p.emoji, p.color, p.business_type
+         s.name AS service_name, p.name AS provider_name, p.emoji, p.color, p.resource_type
   FROM bookings b
   JOIN customers c ON c.id = b.customer_id
   JOIN services s ON s.id = b.service_id
@@ -102,20 +97,17 @@ adminRouter.get('/bookings.csv', asyncHandler(async (req, res) => {
     params
   );
   const header = ['code', 'status', 'provider', 'service', 'customer_name', 'customer_email',
-    'customer_phone', 'starts_at', 'ends_at', 'price_inr', 'discount_inr', 'paid_online_inr',
-    'coupon', 'created_at', 'notes'];
+    'customer_phone', 'starts_at', 'ends_at', 'created_at', 'notes'];
   const lines = [header.join(',')];
   for (const b of rows) {
     lines.push([
       b.code, b.status, b.provider_name, b.service_name, b.customer_name, b.customer_email,
       b.customer_phone,
       new Date(b.starts_at).toISOString(), new Date(b.ends_at).toISOString(),
-      (b.price_cents / 100).toFixed(2), (b.discount_cents / 100).toFixed(2),
-      (b.amount_due_cents / 100).toFixed(2), b.coupon_code ?? '',
       new Date(b.created_at).toISOString(), b.notes,
     ].map(csvCell).join(','));
   }
-  // BOM so Excel opens UTF-8 (₹, emoji) correctly; CRLF per RFC 4180
+  // BOM so Excel opens UTF-8 (Chinese text and emoji) correctly; CRLF per RFC 4180
   const csv = '﻿' + lines.join('\r\n') + '\r\n';
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="bookings-${new Date().toISOString().slice(0, 10)}.csv"`);
@@ -131,7 +123,6 @@ adminRouter.get('/bookings/:id/events', asyncHandler(async (req, res) => {
 }));
 
 const TRANSITIONS: Record<string, string[]> = {
-  pending_payment: ['cancelled'], // cancelling an unpaid hold releases the slot
   confirmed: ['completed', 'cancelled', 'no_show'],
   completed: [],
   cancelled: [],
@@ -149,7 +140,7 @@ adminRouter.patch('/bookings/:id/status', asyncHandler(async (req, res) => {
   }
   if (status === 'cancelled') {
     // provider-initiated cancellations never penalize the customer
-    await cancelBooking(id, `admin:${req.admin!.email}`, { cancelledBy: 'the provider', refund: 'full' });
+    await cancelBooking(id, `admin:${req.admin!.email}`, { cancelledBy: 'the provider' });
     wake();
   } else {
     await pool.query(`UPDATE bookings SET status = $2, updated_at = now() WHERE id = $1`, [id, status]);
@@ -157,61 +148,8 @@ adminRouter.patch('/bookings/:id/status', asyncHandler(async (req, res) => {
       `INSERT INTO booking_events (booking_id, event, actor) VALUES ($1, $2, $3)`,
       [id, status, `admin:${req.admin!.email}`]
     );
-    if (status === 'completed') await earnForCompletion(detail);
   }
   res.json({ ...detail, status });
-}));
-
-// ------------------------------------------------------------------ payments
-adminRouter.get('/payments', asyncHandler(async (req, res) => {
-  const q = z.object({
-    status: z.string().optional(),
-    search: z.string().optional(),
-    limit: z.coerce.number().int().min(1).max(200).default(100),
-  }).parse(req.query);
-  const params: unknown[] = [];
-  const where: string[] = ['true'];
-  if (q.status) { params.push(q.status); where.push(`p.status = $${params.length}`); }
-  if (q.search) {
-    params.push(`%${q.search}%`);
-    where.push(`(b.code ILIKE $${params.length} OR c.name ILIKE $${params.length} OR c.email ILIKE $${params.length} OR p.order_id ILIKE $${params.length})`);
-  }
-  params.push(q.limit);
-  const { rows } = await pool.query(
-    `SELECT p.*, b.code AS booking_code, b.starts_at, b.status AS booking_status,
-            c.name AS customer_name, c.email AS customer_email,
-            pr.name AS provider_name, pr.emoji, s.name AS service_name,
-            (SELECT coalesce(sum(r.amount_cents), 0)::int FROM refunds r
-             WHERE r.payment_id = p.id AND r.status <> 'failed') AS refunded_cents
-     FROM payments p
-     JOIN bookings b ON b.id = p.booking_id
-     JOIN customers c ON c.id = b.customer_id
-     JOIN providers pr ON pr.id = b.provider_id
-     JOIN services s ON s.id = b.service_id
-     WHERE ${where.join(' AND ')}
-     ORDER BY p.created_at DESC
-     LIMIT $${params.length}`,
-    params
-  );
-  res.json(rows);
-}));
-
-adminRouter.post('/payments/:id/refund', asyncHandler(async (req, res) => {
-  const id = z.coerce.number().int().parse(req.params.id);
-  const { amountCents } = z.object({ amountCents: z.number().int().positive().optional() }).parse(req.body);
-  const { rows: [payment] } = await pool.query(
-    `SELECT * FROM payments WHERE id = $1 AND status IN ('captured', 'partially_refunded')`, [id]
-  );
-  if (!payment) return res.status(404).json({ error: 'No refundable payment found' });
-  const refundable = payment.amount_cents - (await refundedSoFar(payment.id));
-  if (refundable <= 0) return res.status(400).json({ error: 'This payment is already fully refunded' });
-  const result = await executeRefund(
-    payment,
-    amountCents ?? refundable,
-    'admin_manual',
-    `admin:${req.admin!.email}`
-  );
-  res.json(result);
 }));
 
 // ------------------------------------------------------------------ waitlist
@@ -244,51 +182,6 @@ adminRouter.delete('/waitlist/:id', asyncHandler(async (req, res) => {
   // soft-remove keeps the audit trail
   await pool.query(`UPDATE waitlist SET status = 'expired' WHERE id = $1`, [id]);
   res.json({ ok: true });
-}));
-
-// ------------------------------------------------------------------- coupons
-const couponSchema = z.object({
-  code: z.string().min(3).max(40).regex(/^[A-Za-z0-9_-]+$/).transform((s) => s.toUpperCase()),
-  type: z.enum(['percent', 'fixed']),
-  value: z.number().int().positive(),
-  max_uses: z.number().int().positive().nullable().default(null),
-  min_amount_cents: z.number().int().min(0).default(0),
-  valid_from: z.string().nullable().default(null),
-  valid_to: z.string().nullable().default(null),
-  active: z.boolean().default(true),
-}).refine((c) => c.type !== 'percent' || c.value <= 100, { message: 'Percent value must be ≤ 100' });
-
-adminRouter.get('/coupons', asyncHandler(async (_req, res) => {
-  const { rows } = await pool.query('SELECT * FROM coupons ORDER BY created_at DESC');
-  res.json(rows);
-}));
-
-adminRouter.post('/coupons', asyncHandler(async (req, res) => {
-  const c = couponSchema.parse(req.body);
-  try {
-    const { rows: [row] } = await pool.query(
-      `INSERT INTO coupons (code, type, value, max_uses, min_amount_cents, valid_from, valid_to, active)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-      [c.code, c.type, c.value, c.max_uses, c.min_amount_cents, c.valid_from, c.valid_to, c.active]
-    );
-    res.status(201).json(row);
-  } catch (err: any) {
-    if (err.code === '23505') return res.status(409).json({ error: 'A coupon with this code already exists' });
-    throw err;
-  }
-}));
-
-adminRouter.put('/coupons/:id', asyncHandler(async (req, res) => {
-  const id = z.coerce.number().int().parse(req.params.id);
-  const c = couponSchema.parse(req.body);
-  const { rows: [row] } = await pool.query(
-    `UPDATE coupons SET code=$2, type=$3, value=$4, max_uses=$5, min_amount_cents=$6,
-       valid_from=$7, valid_to=$8, active=$9
-     WHERE id = $1 RETURNING *`,
-    [id, c.code, c.type, c.value, c.max_uses, c.min_amount_cents, c.valid_from, c.valid_to, c.active]
-  );
-  if (!row) return res.status(404).json({ error: 'Coupon not found' });
-  res.json(row);
 }));
 
 // ------------------------------------------------------------------- reviews
@@ -355,7 +248,7 @@ adminRouter.get('/week', asyncHandler(async (req, res) => {
   }).parse(req.query);
   const params: unknown[] = [q.start];
   let where = `b.starts_at >= $1::date AND b.starts_at < $1::date + interval '7 days'
-               AND b.status IN ('pending_payment','confirmed','completed')`;
+               AND b.status IN ('confirmed','completed')`;
   if (q.providerId) {
     params.push(q.providerId);
     where += ` AND b.provider_id = $${params.length}`;
@@ -377,7 +270,7 @@ adminRouter.get('/week', asyncHandler(async (req, res) => {
 
 // ---------------------------------------------------------------- providers
 const providerSchema = z.object({
-  business_type: z.enum(['doctor', 'salon', 'turf']),
+  resource_type: z.enum(['study_room', 'meeting_room', 'equipment']),
   name: z.string().min(2).max(120),
   title: z.string().max(120).default(''),
   bio: z.string().max(2000).default(''),
@@ -394,7 +287,7 @@ adminRouter.get('/providers', asyncHandler(async (_req, res) => {
   const { rows } = await pool.query(`
     SELECT p.*, count(s.id) FILTER (WHERE s.active) AS service_count
     FROM providers p LEFT JOIN services s ON s.provider_id = p.id
-    GROUP BY p.id ORDER BY p.business_type, p.name
+    GROUP BY p.id ORDER BY p.resource_type, p.name
   `);
   res.json(rows);
 }));
@@ -421,9 +314,9 @@ adminRouter.get('/providers/:id', asyncHandler(async (req, res) => {
 adminRouter.post('/providers', asyncHandler(async (req, res) => {
   const p = providerSchema.parse(req.body);
   const { rows: [row] } = await pool.query(
-    `INSERT INTO providers (business_type, name, title, bio, emoji, color, slot_step_min, min_lead_min, booking_horizon_days, reschedule_cutoff_min, active)
+    `INSERT INTO providers (resource_type, name, title, bio, emoji, color, slot_step_min, min_lead_min, booking_horizon_days, reschedule_cutoff_min, active)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-    [p.business_type, p.name, p.title, p.bio, p.emoji, p.color, p.slot_step_min, p.min_lead_min, p.booking_horizon_days, p.reschedule_cutoff_min, p.active]
+    [p.resource_type, p.name, p.title, p.bio, p.emoji, p.color, p.slot_step_min, p.min_lead_min, p.booking_horizon_days, p.reschedule_cutoff_min, p.active]
   );
   res.status(201).json(row);
 }));
@@ -432,10 +325,10 @@ adminRouter.put('/providers/:id', asyncHandler(async (req, res) => {
   const id = z.coerce.number().int().parse(req.params.id);
   const p = providerSchema.parse(req.body);
   const { rows: [row] } = await pool.query(
-    `UPDATE providers SET business_type=$2, name=$3, title=$4, bio=$5, emoji=$6, color=$7,
+    `UPDATE providers SET resource_type=$2, name=$3, title=$4, bio=$5, emoji=$6, color=$7,
        slot_step_min=$8, min_lead_min=$9, booking_horizon_days=$10, reschedule_cutoff_min=$11, active=$12
      WHERE id = $1 RETURNING *`,
-    [id, p.business_type, p.name, p.title, p.bio, p.emoji, p.color, p.slot_step_min, p.min_lead_min, p.booking_horizon_days, p.reschedule_cutoff_min, p.active]
+    [id, p.resource_type, p.name, p.title, p.bio, p.emoji, p.color, p.slot_step_min, p.min_lead_min, p.booking_horizon_days, p.reschedule_cutoff_min, p.active]
   );
   if (!row) return res.status(404).json({ error: 'Provider not found' });
   res.json(row);
@@ -522,9 +415,6 @@ const serviceSchema = z.object({
   description: z.string().max(1000).default(''),
   duration_min: z.number().int().min(5).max(480),
   buffer_min: z.number().int().min(0).max(120).default(0),
-  price_cents: z.number().int().min(0),
-  payment_policy: z.enum(['none', 'deposit', 'full']).default('none'),
-  deposit_pct: z.number().int().min(1).max(100).default(50),
   active: z.boolean().default(true),
 });
 
@@ -532,9 +422,9 @@ adminRouter.post('/providers/:id/services', asyncHandler(async (req, res) => {
   const providerId = z.coerce.number().int().parse(req.params.id);
   const s = serviceSchema.parse(req.body);
   const { rows: [row] } = await pool.query(
-    `INSERT INTO services (provider_id, name, description, duration_min, buffer_min, price_cents, payment_policy, deposit_pct, active)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-    [providerId, s.name, s.description, s.duration_min, s.buffer_min, s.price_cents, s.payment_policy, s.deposit_pct, s.active]
+    `INSERT INTO services (provider_id, name, description, duration_min, buffer_min, active)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [providerId, s.name, s.description, s.duration_min, s.buffer_min, s.active]
   );
   res.status(201).json(row);
 }));
@@ -543,10 +433,10 @@ adminRouter.put('/services/:id', asyncHandler(async (req, res) => {
   const id = z.coerce.number().int().parse(req.params.id);
   const s = serviceSchema.parse(req.body);
   const { rows: [row] } = await pool.query(
-    `UPDATE services SET name=$2, description=$3, duration_min=$4, buffer_min=$5, price_cents=$6,
-       payment_policy=$7, deposit_pct=$8, active=$9
+    `UPDATE services SET name=$2, description=$3, duration_min=$4, buffer_min=$5,
+       active=$6
      WHERE id = $1 RETURNING *`,
-    [id, s.name, s.description, s.duration_min, s.buffer_min, s.price_cents, s.payment_policy, s.deposit_pct, s.active]
+    [id, s.name, s.description, s.duration_min, s.buffer_min, s.active]
   );
   if (!row) return res.status(404).json({ error: 'Service not found' });
   res.json(row);

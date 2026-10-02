@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
-import { fmtDateTime, fmtTime, money, STATUS_LABELS } from '../format';
+import { fmtDateTime, fmtTime, STATUS_LABELS } from '../format';
 import type { Booking } from '../types';
 import RescheduleDialog from '../components/RescheduleDialog';
 import ReviewForm from '../components/ReviewForm';
@@ -38,21 +38,7 @@ export default function Manage() {
 
   async function cancel() {
     if (!booking) return;
-    let msg = '确定取消此预约吗？该时间段将被释放。';
-    try {
-      const p = await api.get<{ paid: boolean; refund: { amountCents: number; paidCents: number } | null }>(
-        `/api/bookings/${booking.code}/refund-preview?email=${encodeURIComponent(email.trim())}`
-      );
-      if (p.paid && p.refund) {
-        msg =
-          p.refund.amountCents > 0
-            ? `确定取消此预约吗？你已支付的 ${money(p.refund.paidCents)} 中将退还 ${money(p.refund.amountCents)}。`
-            : '确定取消此预约吗？根据取消政策，临近预约时间取消不予退款。';
-      }
-    } catch {
-      /* preview is best-effort */
-    }
-    if (!window.confirm(msg)) return;
+    if (!window.confirm('确定取消此预约吗？该时间段将被释放。')) return;
     setBusy(true);
     setError('');
     try {
@@ -99,28 +85,8 @@ export default function Manage() {
             <div><span>预约码</span><strong>{booking.code}</strong></div>
             <div><span>时间</span><strong>{fmtDateTime(booking.starts_at)} – {fmtTime(booking.ends_at)}</strong></div>
             <div><span>预约人</span><strong>{booking.customer_name}</strong></div>
-            <div><span>价格</span><strong>{money(booking.price_cents)}</strong></div>
-            {(booking.discount_cents ?? 0) > 0 && (
-              <div><span>优惠</span><strong>− {money(booking.discount_cents!)}</strong></div>
-            )}
-            {booking.refund && booking.refund.amountCents > 0 && (
-              <div><span>退款</span><strong>已发起 {money(booking.refund.amountCents)}</strong></div>
-            )}
             {booking.notes && <div><span>备注</span><strong>{booking.notes}</strong></div>}
           </div>
-          {booking.status === 'pending_payment' && booking.expires_at && new Date(booking.expires_at) > new Date() && (
-            <Link
-              className="btn btn-primary"
-              to={`/checkout/${booking.code}?email=${encodeURIComponent(email.trim())}`}
-            >
-              💳 完成支付
-            </Link>
-          )}
-          {(booking.amount_due_cents ?? 0) > 0 && booking.status !== 'pending_payment' && (
-            <Link className="panel-link" to={`/receipt/${booking.code}?email=${encodeURIComponent(email.trim())}`}>
-              🧾 查看收据
-            </Link>
-          )}
           {upcoming && (
             <div className="btn-row">
               {canReschedule && (

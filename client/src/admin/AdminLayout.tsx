@@ -20,16 +20,14 @@ export default function AdminLayout() {
   return (
     <div className="admin-shell">
       <aside className="admin-sidebar">
-        <Link to="/" className="brand admin-brand">📅 Book<span className="brand-accent">It</span></Link>
+        <Link to="/" className="brand admin-brand">🏫 Campus<span className="brand-accent">Reserve</span></Link>
         <nav>
           <NavLink to="/admin" end>📊 仪表盘</NavLink>
           <NavLink to="/admin/bookings">🗓️ 预约</NavLink>
           <NavLink to="/admin/day">⏱️ 日视图</NavLink>
           <NavLink to="/admin/week">📆 周视图</NavLink>
-          <NavLink to="/admin/providers">👥 服务商</NavLink>
+          <NavLink to="/admin/providers">🏫 校园资源</NavLink>
           <NavLink to="/admin/reviews">⭐ 评价</NavLink>
-          <NavLink to="/admin/payments">💳 支付</NavLink>
-          <NavLink to="/admin/coupons">🏷️ 优惠券</NavLink>
           <NavLink to="/admin/waitlist">🔔 候补名单</NavLink>
           <NavLink to="/admin/customers">🙋 客户</NavLink>
         </nav>

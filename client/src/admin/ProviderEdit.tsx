@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
-import { hhmm, money, WEEKDAYS } from '../format';
+import { hhmm, WEEKDAYS } from '../format';
 import type { BreakWindow, Provider, ScheduleWindow, Service, TimeOff } from '../types';
 
 export default function ProviderEdit() {
@@ -40,7 +40,7 @@ export default function ProviderEdit() {
     <div>
       <div className="admin-title-row">
         <h1 className="admin-title">
-          <Link to="/admin/providers" className="muted">服务商 /</Link> {provider.name}
+          <Link to="/admin/providers" className="muted">校园资源 /</Link> {provider.name}
         </h1>
         {flash && <span className={`flash flash-${flash.kind}`}>{flash.msg}</span>}
       </div>
@@ -79,9 +79,9 @@ function DetailsPanel({ provider, onSave }: { provider: Provider; onSave: (p: Pa
       <div className="form-grid">
         <label>名称<input className="input" value={p.name} onChange={(e) => setP({ ...p, name: e.target.value })} /></label>
         <label>头衔 / 专业<input className="input" value={p.title} onChange={(e) => setP({ ...p, title: e.target.value })} /></label>
-        <label>类型
-          <select className="input" value={p.business_type} onChange={(e) => setP({ ...p, business_type: e.target.value as Provider['business_type'] })}>
-            <option value="doctor">医生</option><option value="salon">沙龙</option><option value="turf">运动场地</option>
+        <label>资源类型
+          <select className="input" value={p.resource_type} onChange={(e) => setP({ ...p, resource_type: e.target.value as Provider['resource_type'] })}>
+            <option value="study_room">自习空间</option><option value="meeting_room">会议与活动室</option><option value="equipment">实验室设备</option>
           </select>
         </label>
         <label>表情<input className="input" value={p.emoji} onChange={(e) => setP({ ...p, emoji: e.target.value })} /></label>
@@ -96,7 +96,7 @@ function DetailsPanel({ provider, onSave }: { provider: Provider; onSave: (p: Pa
         </label>
       </div>
       <button className="btn btn-primary" onClick={() => onSave({
-        business_type: p.business_type, name: p.name, title: p.title, bio: p.bio, emoji: p.emoji,
+        resource_type: p.resource_type, name: p.name, title: p.title, bio: p.bio, emoji: p.emoji,
         color: p.color, slot_step_min: p.slot_step_min, min_lead_min: p.min_lead_min,
         booking_horizon_days: p.booking_horizon_days, reschedule_cutoff_min: p.reschedule_cutoff_min ?? 120,
         active: p.active,
@@ -110,8 +110,8 @@ function ServicesPanel({ provider, onChanged, onError }: {
   provider: Provider; onChanged: () => void; onError: (msg: string) => void;
 }) {
   const empty = {
-    name: '', description: '', duration_min: 30, buffer_min: 0, price_cents: 0,
-    payment_policy: 'none' as const, deposit_pct: 50, active: true,
+    name: '', description: '', duration_min: 30, buffer_min: 0,
+    active: true,
   };
   const [editing, setEditing] = useState<(Service & { isNew?: boolean }) | null>(null);
 
@@ -119,8 +119,7 @@ function ServicesPanel({ provider, onChanged, onError }: {
     if (!editing) return;
     const body = {
       name: editing.name, description: editing.description, duration_min: editing.duration_min,
-      buffer_min: editing.buffer_min, price_cents: editing.price_cents,
-      payment_policy: editing.payment_policy ?? 'none', deposit_pct: editing.deposit_pct ?? 50,
+      buffer_min: editing.buffer_min,
       active: editing.active ?? true,
     };
     try {
@@ -136,11 +135,11 @@ function ServicesPanel({ provider, onChanged, onError }: {
   return (
     <section className="panel">
       <div className="panel-head">
-        <h2>服务</h2>
-        <button className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...(empty as Service), id: 0, isNew: true })}>+ 添加服务</button>
+        <h2>预约项目</h2>
+        <button className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...(empty as Service), id: 0, isNew: true })}>+ 添加预约项目</button>
       </div>
       <table className="table">
-        <thead><tr><th>服务</th><th>时长</th><th>缓冲</th><th>价格</th><th>付款方式</th><th>状态</th><th></th></tr></thead>
+        <thead><tr><th>预约项目</th><th>时长</th><th>准备时间</th><th>状态</th><th></th></tr></thead>
         <tbody>
           {(provider.services ?? []).map((s) => (
             <tr key={s.id}>
@@ -150,10 +149,6 @@ function ServicesPanel({ provider, onChanged, onError }: {
               </td>
               <td>{s.duration_min} 分钟</td>
               <td>{s.buffer_min} 分钟</td>
-              <td>{money(s.price_cents)}</td>
-              <td className="small">
-                {s.payment_policy === 'full' ? '全额预付' : s.payment_policy === 'deposit' ? `${s.deposit_pct}% 定金` : '到店支付'}
-              </td>
               <td><span className={`badge ${s.active ? 'badge-confirmed' : 'badge-cancelled'}`}>{s.active ? '启用' : '隐藏'}</span></td>
               <td><button className="btn btn-ghost btn-sm" onClick={() => setEditing({ ...s })}>编辑</button></td>
             </tr>
@@ -169,24 +164,6 @@ function ServicesPanel({ provider, onChanged, onError }: {
             <label>描述<input className="input" value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} /></label>
             <label>时长（分钟）<input className="input" type="number" min={5} max={480} value={editing.duration_min} onChange={(e) => setEditing({ ...editing, duration_min: +e.target.value })} /></label>
             <label>缓冲（分钟）<input className="input" type="number" min={0} max={120} value={editing.buffer_min} onChange={(e) => setEditing({ ...editing, buffer_min: +e.target.value })} /></label>
-            <label>价格（₹）
-              <input className="input" type="number" min={0} value={editing.price_cents / 100}
-                onChange={(e) => setEditing({ ...editing, price_cents: Math.round(+e.target.value * 100) })} />
-            </label>
-            <label>付款方式
-              <select className="input" value={editing.payment_policy ?? 'none'}
-                onChange={(e) => setEditing({ ...editing, payment_policy: e.target.value as Service['payment_policy'] })}>
-                <option value="none">到店支付</option>
-                <option value="deposit">线上支付定金</option>
-                <option value="full">全额预付</option>
-              </select>
-            </label>
-            {editing.payment_policy === 'deposit' && (
-              <label>定金比例
-                <input className="input" type="number" min={1} max={100} value={editing.deposit_pct ?? 50}
-                  onChange={(e) => setEditing({ ...editing, deposit_pct: +e.target.value })} />
-              </label>
-            )}
               <label className="check-label">
               <input type="checkbox" checked={editing.active ?? true} onChange={(e) => setEditing({ ...editing, active: e.target.checked })} /> 启用
             </label>

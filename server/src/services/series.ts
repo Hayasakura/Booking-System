@@ -40,14 +40,7 @@ export async function createSeries(input: CreateSeriesInput) {
     [input.serviceId, input.providerId]
   );
   if (!service) throw Object.assign(new Error('Service not found'), { status: 404 });
-  if (service.payment_policy !== 'none') {
-    throw Object.assign(
-      new Error('Recurring bookings are currently available only for pay-at-venue services'),
-      { status: 400 }
-    );
-  }
-
-  const base: CreateBookingInput = { ...input, couponCode: undefined, redeemPoints: undefined };
+  const base: CreateBookingInput = { ...input };
   const stepDays = input.frequency === 'weekly' ? 7 : 14;
 
   // occurrence 0 — must succeed, else the whole request fails
@@ -122,7 +115,7 @@ export async function cancelSeries(code: string, email: string) {
   }
 
   // per-occurrence emails suppressed — one summary goes out instead;
-  // cancelBooking still handles reminders, refunds and the waitlist hook
+  // cancelBooking handles reminders and the waitlist hook
   for (const b of remaining) {
     await cancelBooking(b.id, 'customer', {
       cancelledBy: 'you',

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, ApiError } from '../api';
-import { fmtDate, fmtDateTime, money, STATUS_LABELS } from '../format';
+import { fmtDate, fmtDateTime, STATUS_LABELS } from '../format';
 import type { Booking } from '../types';
 import type { CrmCustomer } from './Customers';
 
@@ -38,8 +38,6 @@ export default function CustomerDetail() {
 
   const tiles = [
     { label: '预约数', value: customer.booking_count, icon: '🗓️' },
-    { label: '累计消费', value: money(customer.total_spend_cents), icon: '💰' },
-    { label: '积分余额', value: customer.points_balance, icon: '⭐' },
     { label: '爽约次数', value: customer.no_show_count, icon: '🚫' },
     { label: '最近到访', value: customer.last_visit ? fmtDate(customer.last_visit) : '—', icon: '📍' },
   ];
@@ -89,7 +87,7 @@ export default function CustomerDetail() {
         {customer.bookings.length > 0 && (
           <table className="table">
             <thead>
-              <tr><th>预约码</th><th>服务商</th><th>服务</th><th>时间</th><th>已付</th><th>状态</th></tr>
+              <tr><th>预约码</th><th>资源</th><th>预约项目</th><th>时间</th><th>状态</th></tr>
             </thead>
             <tbody>
               {customer.bookings.map((b) => (
@@ -98,7 +96,6 @@ export default function CustomerDetail() {
                   <td><span className="cell-provider"><span className="mini-avatar" style={{ background: b.color }}>{b.emoji}</span> {b.provider_name}</span></td>
                   <td>{b.service_name}</td>
                   <td className="small">{fmtDateTime(b.starts_at)}</td>
-                  <td>{money(b.price_cents - (b.discount_cents ?? 0))}</td>
                   <td><span className={`badge badge-${b.status}`}>{STATUS_LABELS[b.status]}</span></td>
                 </tr>
               ))}
